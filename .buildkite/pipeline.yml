@@ -7,17 +7,8 @@ steps:
   - label: ":pencil: Check Environment Variables"
     command: |
       echo "--- Environment Variables"
-      if [ -n "$DOCKERHUB_USERNAME" ]; then
-        echo "✅ DOCKERHUB_USERNAME is set"
-      else
-        echo "❌ DOCKERHUB_USERNAME is not set"
-      fi
-      
-      if [ -n "$DOCKERHUB_TOKEN" ]; then
-        echo "✅ DOCKERHUB_TOKEN is set (value hidden for security)"
-      else
-        echo "❌ DOCKERHUB_TOKEN is not set"
-      fi
+      echo "DOCKERHUB_USERNAME is set: $([ -n "$DOCKERHUB_USERNAME" ] && echo "yes" || echo "no")"
+      echo "DOCKERHUB_TOKEN is set: $([ -n "$DOCKERHUB_TOKEN" ] && echo "yes" || echo "no")"
     
   # Build all services with buildkit
   - label: ":docker: Build Services"
@@ -85,14 +76,14 @@ steps:
     command: |
       # Using environment variables for Docker Hub credentials
       if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
-        echo "❌ DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not set"
+        echo " DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not set"
         echo "Please ensure these are set in your Buildkite pipeline settings"
         exit 1
       fi
       
       echo "--- Logging into Docker Hub"
       if ! echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin; then
-        echo "❌ Failed to log in to Docker Hub"
+        echo " Failed to log in to Docker Hub"
         echo "Please check your DOCKERHUB_TOKEN and ensure it's valid."
         exit 1
       fi
