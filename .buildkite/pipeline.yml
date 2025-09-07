@@ -68,12 +68,15 @@ steps:
   - label: ":docker: Push to Docker Hub"
     if: build.branch == 'main'  # Only push on main branch
     command: |
-      # Hardcoded credentials for testing - replace with environment variables in production
-      DOCKERHUB_USERNAME="hackermonk"
-      DOCKERHUB_PASSWORD="dckr_pat_2TjG1Vk0Y3X6KQ9Z8X7H6Q"  # Replace with your actual token
+      # Using environment variables for Docker Hub credentials
+      if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+        echo "❌ DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not set"
+        echo "Please ensure these are set in your Buildkite pipeline settings"
+        exit 1
+      fi
       
       echo "--- Logging into Docker Hub"
-      if ! echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin; then
+      if ! echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin; then
         echo "❌ Failed to log in to Docker Hub"
         echo "Please check your DOCKERHUB_TOKEN and ensure it's valid."
         exit 1
@@ -100,8 +103,8 @@ steps:
       echo "--- Creating Docker Hub secret in Kubernetes"
       kubectl create secret docker-registry dockerhub-credentials \
         --docker-server=https://index.docker.io/v1/ \
-        --docker-username=hackermonk \
-        --docker-password="dckr_pat_2TjG1Vk0Y3X6KQ9Z8X7H6Q" \
+        --docker-username="$DOCKERHUB_USERNAME" \
+        --docker-password="$DOCKERHUB_TOKEN" \
         --dry-run=client -o yaml | kubectl apply -f -
 
   # Deploy to local Kubernetes
