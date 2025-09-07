@@ -4,215 +4,203 @@ env:
   CGO_ENABLED: "0"
 
 steps:
-- label: ":pencil: Check Environment Variables"
-  command: |
-    echo "--- Environment Variables"
-    echo "Checking if secrets are accessible..."
+  - label: ":pencil: Check Environment Variables"
+    command: |
+      echo "--- Environment Variables"
+      echo "Checking if secrets are accessible..."
 
-    # Check DOCKER_USERNAME
-    if DOCKER_USERNAME=$(buildkite-agent secret get DOCKER_USERNAME 2>/dev/null); then
-      if [ -n "$DOCKER_USERNAME" ]; then
-        echo "✓ DOCKER_USERNAME secret is accessible (length: ${#DOCKER_USERNAME})"
+      # Check DOCKER_USERNAME
+      if DOCKER_USERNAME=$(buildkite-agent secret get DOCKER_USERNAME 2>/dev/null); then
+        if [ -n "$DOCKER_USERNAME" ]; then
+          echo "✓ DOCKER_USERNAME secret is accessible (length: ${#DOCKER_USERNAME})"
+        else
+          echo "  DOCKER_USERNAME secret is accessible but empty"
+        fi
       else
-        echo "  DOCKER_USERNAME secret is accessible but empty"
+        echo " DOCKER_USERNAME secret is not accessible or not set"
       fi
-    else
-      echo " DOCKER_USERNAME secret is not accessible or not set"
-    fi
 
-    # Check DOCKER_PASSWORD
-    if DOCKER_PASSWORD=$(buildkite-agent secret get DOCKER_PASSWORD 2>/dev/null); then
-      if [ -n "$DOCKER_PASSWORD" ]; then
-        echo "✓ DOCKER_PASSWORD secret is accessible (length: ${#DOCKER_PASSWORD})"
+      # Check DOCKER_PASSWORD
+      if DOCKER_PASSWORD=$(buildkite-agent secret get DOCKER_PASSWORD 2>/dev/null); then
+        if [ -n "$DOCKER_PASSWORD" ]; then
+          echo "✓ DOCKER_PASSWORD secret is accessible (length: ${#DOCKER_PASSWORD})"
+        else
+          echo "  DOCKER_PASSWORD secret is accessible but empty"
+        fi
       else
-        echo "  DOCKER_PASSWORD secret is accessible but empty"
+        echo " DOCKER_PASSWORD secret is not accessible or not set"
       fi
-    else
-      echo " DOCKER_PASSWORD secret is not accessible or not set"
-    fi
 
-    # Check if we're in a private pipeline
-    echo "--- Pipeline Information"
-    echo "Pipeline: $BUILDKITE_PIPELINE_SLUG"
-    echo "Organization: $BUILDKITE_ORGANIZATION_SLUG"
-    echo "Repository: $BUILDKITE_REPO"
+      # Check if we're in a private pipeline
+      echo "--- Pipeline Information"
+      echo "Pipeline: $BUILDKITE_PIPELINE_SLUG"
+      echo "Organization: $BUILDKITE_ORGANIZATION_SLUG"
+      echo "Repository: $BUILDKITE_REPO"
 
-# Build all services with buildkit
-- label: ":docker: Build Services"
-  command: |
-    echo "--- Building services"
-    # Enable Docker BuildKit for faster builds
-    export DOCKER_BUILDKIT=1
-    # Build in parallel
-    docker-compose -f docker-compose.ci.yml build --parallel --no-cache
+  # Build all services with buildkit
+  - label: ":docker: Build Services"
+    command: |
+      echo "--- Building services"
+      # Enable Docker BuildKit for faster builds
+      export DOCKER_BUILDKIT=1
+      # Build in parallel
+      docker-compose -f docker-compose.ci.yml build --parallel --no-cache
 
-    # Save build cache for future builds
-    echo "--- Saving build cache"
-    docker system df -v
+      # Save build cache for future builds
+      echo "--- Saving build cache"
+      docker system df -v
 
-# Test Services
-- label: ":go: Test Services"
-  command: |
-    echo "--- Building test environment"
-    # Build the images first without running them
-    docker-compose -f docker-compose.ci.yml build
+  # Test Services
+  - label: ":go: Test Services"
+    command: |
+      echo "--- Building test environment"
+      # Build the images first without running them
+      docker-compose -f docker-compose.ci.yml build
 
-    # Start only MySQL
-    echo "--- Starting MySQL"
-    docker-compose -f docker-compose.ci.yml up -d mysql
+      # Start only MySQL
+      echo "--- Starting MySQL"
+      docker-compose -f docker-compose.ci.yml up -d mysql
 
-    echo "--- Waiting for MySQL to be ready"
-    sleep 30
+      echo "--- Waiting for MySQL to be ready"
+      sleep 30
 
-    # Create a temporary directory for test results
-    mkdir -p test-results
+      # Create a temporary directory for test results
+      mkdir -p test-results
 
-    echo "--- Running Order Service tests"
-    docker run --rm \
-      --network container:buildkite-secure-pipeline-mysql-1 \
-      -e DB_HOST=localhost \
-      -e DB_PORT=3306 \
-      -e DB_USER=user \
-      -e DB_PASSWORD=password \
-      -e DB_NAME=orders \
-      -v "$(pwd)/test-results:/test-results" \
-      buildkite-secure-pipeline-order \
-      sh -c "cd /app && go test -v ./... | tee /test-results/order-test-output.txt" || echo "Order tests failed but continuing..."
+      echo "--- Running Order Service tests"
+      docker run --rm \
+        --network container:buildkite-secure-pipeline-mysql-1 \
+        -e DB_HOST=localhost \
+        -e DB_PORT=3306 \
+        -e DB_USER=user \
+        -e DB_PASSWORD=password \
+        -e DB_NAME=orders \
+        -v "$(pwd)/test-results:/test-results" \
+        buildkite-secure-pipeline-order \
+        sh -c "cd /app && go test -v ./... | tee /test-results/order-test-output.txt" || echo "Order tests failed but continuing..."
 
-    echo "--- Running Payment Service tests"
-    docker run --rm \
-      --network container:buildkite-secure-pipeline-mysql-1 \
-      -e DB_HOST=localhost \
-      -e DB_PORT=3306 \
-      -e DB_USER=user \
-      -e DB_PASSWORD=password \
-      -e DB_NAME=payments \
-      -v "$(pwd)/test-results:/test-results" \
-      buildkite-secure-pipeline-payment \
-      sh -c "cd /app && go test -v ./... | tee /test-results/payment-test-output.txt" || echo "Payment tests failed but continuing..."
+      echo "--- Running Payment Service tests"
+      docker run --rm \
+        --network container:buildkite-secure-pipeline-mysql-1 \
+        -e DB_HOST=localhost \
+        -e DB_PORT=3306 \
+        -e DB_USER=user \
+        -e DB_PASSWORD=password \
+        -e DB_NAME=payments \
+        -v "$(pwd)/test-results:/test-results" \
+        buildkite-secure-pipeline-payment \
+        sh -c "cd /app && go test -v ./... | tee /test-results/payment-test-output.txt" || echo "Payment tests failed but continuing..."
 
-    echo "--- Test Results"
-    cat test-results/*.txt || true
+      echo "--- Test Results"
+      cat test-results/*.txt || true
 
-    echo "--- Cleaning up"
-    docker-compose -f docker-compose.ci.yml down -v
+      echo "--- Cleaning up"
+      docker-compose -f docker-compose.ci.yml down -v
 
-# Login to Docker Hub and push images
-- label: ":docker: Push to Docker Hub"
-  if: build.branch == 'main'  # Only push on main branch
-  command: |
-    echo "--- Getting Docker Hub credentials"
-    export DOCKER_USERNAME=$(buildkite-agent secret get DOCKER_USERNAME)
-    export DOCKER_PASSWORD=$(buildkite-agent secret get DOCKER_PASSWORD)
-
-    # Debug: Check if secrets were retrieved (without exposing values)
-    echo "--- Debug: Secret retrieval status"
-    if [ -n "$DOCKER_USERNAME" ]; then
-      echo "✓ DOCKER_USERNAME secret retrieved (length: ${#DOCKER_USERNAME})"
-    else
-      echo "✗ DOCKER_USERNAME secret is empty or not set"
-    fi
-
-    if [ -n "$DOCKER_PASSWORD" ]; then
-      echo "✓ DOCKER_PASSWORD secret retrieved (length: ${#DOCKER_PASSWORD})"
-    else
-      echo "✗ DOCKER_PASSWORD secret is empty or not set"
-    fi
-
-    # Validate that secrets are not empty
-    if [ -z "$DOCKER_USERNAME" ]; then
-      echo "Error: DOCKER_USERNAME secret is empty or not set"
-      exit 1
-    fi
-
-    if [ -z "$DOCKER_PASSWORD" ]; then
-      echo "Error: DOCKER_PASSWORD secret is empty or not set"
-      exit 1
-    fi
-
-    # Check Docker version
-    echo "--- Docker version check"
-    docker --version
-
-    echo "--- Logging into Docker Hub"
-    # Try method 1: Using password-stdin
-    if echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin; then
-      echo "✓ Successfully logged in using password-stdin method"
-    else
-      echo "⚠️  password-stdin method failed, trying alternative method..."
-      # Try method 2: Using environment variable
-      if DOCKER_PASSWORD="$DOCKER_PASSWORD" docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"; then
-        echo "✓ Successfully logged in using environment variable method"
-      else
-        echo "❌ Both login methods failed"
-        echo "Please check your DOCKER_USERNAME and DOCKER_PASSWORD secrets and ensure they're valid."
-        echo "Also verify that your Docker Hub account has the necessary permissions."
+  # Login to Docker Hub and push images
+  - label: ":docker: Push to Docker Hub"
+    if: build.branch == 'main'  # Only push on main branch
+    command: |
+      echo "--- Getting Docker Hub credentials"
+      
+      # Check if secrets are accessible
+      echo "--- Debug: Checking secret accessibility"
+      if ! buildkite-agent secret get DOCKER_USERNAME >/dev/null 2>&1; then
+        echo "Error: DOCKER_USERNAME secret is not accessible"
         exit 1
       fi
-    fi
-
-    echo "--- Tagging and pushing images"
-    docker tag buildkite-secure-pipeline-order hackermonk/order:${BUILDKITE_COMMIT:0:7}
-    docker tag buildkite-secure-pipeline-payment hackermonk/payment:${BUILDKITE_COMMIT:0:7}
-
-    echo "--- Pushing images to Docker Hub"
-    docker push hackermonk/order:${BUILDKITE_COMMIT:0:7}
-    docker push hackermonk/payment:${BUILDKITE_COMMIT:0:7}
-
-    # Also tag as latest for the most recent successful build
-    docker tag buildkite-secure-pipeline-order hackermonk/order:latest
-    docker tag buildkite-secure-pipeline-payment hackermonk/payment:latest
-    docker push hackermonk/order:latest
-    docker push hackermonk/payment:latest
-
-# Create Docker Hub secret in Kubernetes
-- label: ":kubernetes: Create Docker Hub Secret"
-  if: build.branch == 'main'
-  command: |
-    echo "--- Creating Docker Hub secret in Kubernetes"
-    kubectl create secret docker-registry dockerhub-credentials \
-      --docker-server=https://index.docker.io/v1/ \
-      --docker-username="$DOCKER_USERNAME" \
-      --docker-password="$DOCKER_PASSWORD" \
-      --dry-run=client -o yaml | kubectl apply -f -
-
-# Deploy to local Kubernetes
-- label: ":kubernetes: Deploy to Local K8s"
-  if: build.branch == 'main'  # Only deploy on main branch
-  command: |
-    echo "--- Installing required tools"
-    apt-get update && apt-get install -y gettext-base
-
-    echo "--- Deploying to local Kubernetes"
-
-    # Set image names with Docker Hub username
-    export ORDER_IMAGE=hackermonk/order:${BUILDKITE_COMMIT:0:7}
-    export PAYMENT_IMAGE=hackermonk/payment:${BUILDKITE_COMMIT:0:7}
-
-    echo "--- Using images:"
-    echo "Order: $ORDER_IMAGE"
-    echo "Payment: $PAYMENT_IMAGE"
-
-    # Apply Kubernetes manifests with envsubst to replace image names
-    echo "--- Applying Kubernetes manifests"
-    # Change to kubernetes directory and get full path
-    cd kubernetes
-    KUBE_DIR=$(pwd)
-
-    # Process and apply each manifest from kubernetes directory
-    for manifest in order-deployment.yaml payment-deployment.yaml mysql-deployment.yaml services.yaml; do
-      if [ -f "$manifest" ]; then
-        echo "--- Processing $manifest..."
-        envsubst < "$manifest" | kubectl apply -f - || echo "Failed to apply $manifest"
-      else
-        echo "Error: Required manifest $manifest not found"
-        ls -la . || true
+      
+      if ! buildkite-agent secret get DOCKER_PASSWORD >/dev/null 2>&1; then
+        echo "Error: DOCKER_PASSWORD secret is not accessible"
         exit 1
       fi
-    done
+      
+      echo "✓ Both secrets are accessible"
+      
+      # Check Docker version
+      echo "--- Docker version check"
+      docker --version
 
-    echo "--- Deployment status"
-    kubectl get pods -A
+      echo "--- Logging into Docker Hub"
+      # Use secrets directly without exposing them
+      if buildkite-agent secret get DOCKER_PASSWORD | docker login -u "$(buildkite-agent secret get DOCKER_USERNAME)" --password-stdin; then
+        echo "✓ Successfully logged in using password-stdin method"
+      else
+        echo "⚠️  password-stdin method failed, trying alternative method..."
+        # Try method 2: Using environment variable
+        if DOCKER_PASSWORD="$DOCKER_PASSWORD" docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"; then
+          echo "✓ Successfully logged in using environment variable method"
+        else
+          echo "❌ Both login methods failed"
+          echo "Please check your DOCKER_USERNAME and DOCKER_PASSWORD secrets and ensure they're valid."
+          echo "Also verify that your Docker Hub account has the necessary permissions."
+          exit 1
+        fi
+      fi
 
-    echo "--- Services"
-    kubectl get svc -A
+      echo "--- Tagging and pushing images"
+      docker tag buildkite-secure-pipeline-order hackermonk/order:${BUILDKITE_COMMIT:0:7}
+      docker tag buildkite-secure-pipeline-payment hackermonk/payment:${BUILDKITE_COMMIT:0:7}
+
+      echo "--- Pushing images to Docker Hub"
+      docker push hackermonk/order:${BUILDKITE_COMMIT:0:7}
+      docker push hackermonk/payment:${BUILDKITE_COMMIT:0:7}
+
+      # Also tag as latest for the most recent successful build
+      docker tag buildkite-secure-pipeline-order hackermonk/order:latest
+      docker tag buildkite-secure-pipeline-payment hackermonk/payment:latest
+      docker push hackermonk/order:latest
+      docker push hackermonk/payment:latest
+
+  # Create Docker Hub secret in Kubernetes
+  - label: ":kubernetes: Create Docker Hub Secret"
+    if: build.branch == 'main'
+    command: |
+      echo "--- Creating Docker Hub secret in Kubernetes"
+      # Use secrets directly in the command
+      kubectl create secret docker-registry dockerhub-credentials \
+        --docker-server=https://index.docker.io/v1/ \
+        --docker-username="$(buildkite-agent secret get DOCKER_USERNAME)" \
+        --docker-password="$(buildkite-agent secret get DOCKER_PASSWORD)" \
+        --dry-run=client -o yaml | kubectl apply -f -
+
+  # Deploy to local Kubernetes
+  - label: ":kubernetes: Deploy to Local K8s"
+    if: build.branch == 'main'  # Only deploy on main branch
+    command: |
+      echo "--- Installing required tools"
+      apt-get update && apt-get install -y gettext-base
+
+      echo "--- Deploying to local Kubernetes"
+
+      # Set image names with Docker Hub username
+      export ORDER_IMAGE=hackermonk/order:${BUILDKITE_COMMIT:0:7}
+      export PAYMENT_IMAGE=hackermonk/payment:${BUILDKITE_COMMIT:0:7}
+
+      echo "--- Using images:"
+      echo "Order: $ORDER_IMAGE"
+      echo "Payment: $PAYMENT_IMAGE"
+
+      # Apply Kubernetes manifests with envsubst to replace image names
+      echo "--- Applying Kubernetes manifests"
+      # Change to kubernetes directory and get full path
+      cd kubernetes
+      KUBE_DIR=$(pwd)
+
+      # Process and apply each manifest from kubernetes directory
+      for manifest in order-deployment.yaml payment-deployment.yaml mysql-deployment.yaml services.yaml; do
+        if [ -f "$manifest" ]; then
+          echo "--- Processing $manifest..."
+          envsubst < "$manifest" | kubectl apply -f - || echo "Failed to apply $manifest"
+        else
+          echo "Error: Required manifest $manifest not found"
+          ls -la . || true
+          exit 1
+        fi
+      done
+
+      echo "--- Deployment status"
+      kubectl get pods -A
+
+      echo "--- Services"
+      kubectl get svc -A
