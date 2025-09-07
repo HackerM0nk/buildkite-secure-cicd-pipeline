@@ -25,25 +25,25 @@ steps:
       sleep 30
       
       echo "--- Running Order Service tests"
-      # Run tests directly in the container without volume mounts
-      docker run --rm --network container:buildkite-secure-pipeline-mysql-1 \
-        -e DB_HOST=localhost \
+      # Use docker-compose to run tests with proper service discovery
+      docker-compose -f docker-compose.ci.yml run --rm \
+        -e DB_HOST=mysql \
         -e DB_PORT=3306 \
         -e DB_USER=user \
         -e DB_PASSWORD=password \
         -e DB_NAME=orders \
-        buildkite-secure-pipeline-order \
-        sh -c "cd /app && go test -v ./..."
+        order \
+        go test -v ./...
       
       echo "--- Running Payment Service tests"
-      docker run --rm --network container:buildkite-secure-pipeline-mysql-1 \
-        -e DB_HOST=localhost \
+      docker-compose -f docker-compose.ci.yml run --rm \
+        -e DB_HOST=mysql \
         -e DB_PORT=3306 \
         -e DB_USER=user \
         -e DB_PASSWORD=password \
         -e DB_NAME=payments \
-        buildkite-secure-pipeline-payment \
-        sh -c "cd /app && go test -v ./..."
+        payment \
+        go test -v ./...
       
       echo "--- Cleaning up"
       docker-compose -f docker-compose.ci.yml down -v
