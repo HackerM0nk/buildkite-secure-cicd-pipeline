@@ -70,10 +70,10 @@ steps:
     command: |
       # Hardcoded credentials for testing - replace with environment variables in production
       DOCKERHUB_USERNAME="hackermonk"
-      DOCKERHUB_TOKEN="dckr_pat_2TjG1Vk0Y3X6KQ9Z8X7H6Q"  # Replace with your actual token
+      DOCKERHUB_PASSWORD="dckr_pat_2TjG1Vk0Y3X6KQ9Z8X7H6Q"  # Replace with your actual token
       
       echo "--- Logging into Docker Hub"
-      if ! echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin; then
+      if ! echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin; then
         echo "❌ Failed to log in to Docker Hub"
         echo "Please check your DOCKERHUB_TOKEN and ensure it's valid."
         exit 1
@@ -92,6 +92,17 @@ steps:
       docker tag buildkite-secure-pipeline-payment hackermonk/payment:latest
       docker push hackermonk/order:latest
       docker push hackermonk/payment:latest
+
+  # Create Docker Hub secret in Kubernetes
+  - label: ":kubernetes: Create Docker Hub Secret"
+    if: build.branch == 'main'
+    command: |
+      echo "--- Creating Docker Hub secret in Kubernetes"
+      kubectl create secret docker-registry dockerhub-credentials \
+        --docker-server=https://index.docker.io/v1/ \
+        --docker-username=hackermonk \
+        --docker-password="dckr_pat_2TjG1Vk0Y3X6KQ9Z8X7H6Q" \
+        --dry-run=client -o yaml | kubectl apply -f -
 
   # Deploy to local Kubernetes
   - label: ":kubernetes: Deploy to Local K8s"
