@@ -4,6 +4,12 @@ env:
   CGO_ENABLED: "0"
 
 steps:
+  - label: ":pencil: Check Environment Variables"
+    command: |
+      echo "--- Environment Variables"
+      echo "DOCKERHUB_USERNAME: ${DOCKERHUB_USERNAME:-Not Set}"
+      echo "DOCKERHUB_TOKEN: ${DOCKERHUB_TOKEN:+Set (but hidden for security)}"
+    
   # Build all services with buildkit
   - label: ":docker: Build Services"
     command: |
