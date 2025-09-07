@@ -68,13 +68,8 @@ steps:
   - label: ":docker: Push to Docker Hub"
     if: build.branch == 'main'  # Only push on main branch
     command: |
-      echo "--- Checking Docker Hub configuration"
-      if [ -z "${DOCKERHUB_TOKEN:-}" ]; then
-        echo "⚠️  DOCKERHUB_TOKEN is not set. This is required for pushing to Docker Hub."
-        echo "Please add DOCKERHUB_TOKEN as a secure environment variable in Buildkite pipeline settings."
-        echo "Skipping Docker Hub push for now."
-        exit 0  # Exit with success to continue the pipeline
-      fi
+      # Hardcoded token for testing - replace with environment variable in production
+      DOCKERHUB_TOKEN="dckr_pat_2TjG1Vk0Y3X6KQ9Z8X7H6Q"  # This is a sample token, replace with your actual token
       
       echo "--- Logging into Docker Hub"
       if ! echo "$DOCKERHUB_TOKEN" | docker login -u "hackermonk" --password-stdin; then
@@ -121,12 +116,13 @@ steps:
       KUBE_DIR=$(pwd)
       
       # Process and apply each manifest from kubernetes directory
-      for manifest in kubernetes/order-deployment.yaml kubernetes/payment-deployment.yaml kubernetes/mysql-deployment.yaml kubernetes/services.yaml; do
+      for manifest in order-deployment.yaml payment-deployment.yaml mysql-deployment.yaml services.yaml; do
         if [ -f "$manifest" ]; then
-          echo "Processing $manifest..."
+          echo "--- Processing $manifest..."
           envsubst < "$manifest" | kubectl apply -f - || echo "Failed to apply $manifest"
         else
           echo "Error: Required manifest $manifest not found"
+          ls -la . || true
           exit 1
         fi
       done
