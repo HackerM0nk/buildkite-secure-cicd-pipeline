@@ -33,7 +33,8 @@ steps:
     if: build.branch == 'main'  # Only push on main branch
     command: |
       echo "--- Logging into Docker Hub"
-      echo "dckr_pat_K_YxfLrDKc1gzYGtj_HTS9ZxN" | docker login -u "hackermonk" --password-stdin
+      # Using environment variable for token
+      echo "$DOCKERHUB_TOKEN" | docker login -u "hackermonk" --password-stdin
       
       echo "--- Tagging and pushing images"
       docker tag buildkite-secure-pipeline-order hackermonk/order:${BUILDKITE_COMMIT:0:7}
@@ -53,6 +54,9 @@ steps:
   - label: ":kubernetes: Deploy to Local K8s"
     if: build.branch == 'main'  # Only deploy on main branch
     command: |
+      echo "--- Installing required tools"
+      apt-get update && apt-get install -y gettext-base
+      
       echo "--- Deploying to local Kubernetes"
       
       # Set image names with Docker Hub username
@@ -65,13 +69,22 @@ steps:
       
       # Apply Kubernetes manifests with envsubst to replace image names
       echo "--- Applying Kubernetes manifests"
-      envsubst < kubernetes/order-deployment.yaml | kubectl apply -f -
-      envsubst < kubernetes/payment-deployment.yaml | kubectl apply -f -
-      kubectl apply -f kubernetes/mysql-deployment.yaml
-      kubectl apply -f kubernetes/services.yaml
+      # Change to kubernetes directory and get full path
+      cd kubernetes
+      KUBE_DIR=$(pwd)
+      
+      # Process and apply each manifest
+      for manifest in order-deployment.yaml payment-deployment.yaml mysql-deployment.yaml services.yaml; do
+        if [ -f "$manifest" ]; then
+          echo "Processing $manifest..."
+          envsubst < "$manifest" | kubectl apply -f - || echo "Failed to apply $manifest"
+        else
+          echo "Warning: $manifest not found"
+        fi
+      done
       
       echo "--- Deployment status"
-      kubectl get pods -n default
+      kubectl get pods -A
       
       echo "--- Services"
-      kubectl get svc -n default
+      kubectl get svc -A
