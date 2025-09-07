@@ -24,11 +24,13 @@ services:
       DB_PASSWORD: password
       DB_NAME: orders
     working_dir: /app
-    entrypoint: ["/bin/sh", "-c"]
-    command: ["go test -v ./..."]
+    command: ["sh", "-c", "go test -v ./..."]
     depends_on:
       mysql:
         condition: service_healthy
+    # For testing
+    volumes:
+      - ./order:/app
 
   payment:
     build:
@@ -41,8 +43,10 @@ services:
       DB_PASSWORD: password
       DB_NAME: payments
     working_dir: /app
-    entrypoint: ["/bin/sh", "-c"]
-    command: ["go test -v ./..."]
+    command: ["sh", "-c", "go test -v ./..."]
     depends_on:
       mysql:
         condition: service_healthy
+    # For testing
+    volumes:
+      - ./payment:/app
