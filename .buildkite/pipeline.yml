@@ -7,8 +7,18 @@ steps:
   - label: ":pencil: Check Environment Variables"
     command: |
       echo "--- Environment Variables"
-      echo "DOCKERHUB_USERNAME is set: $([ -n "$DOCKERHUB_USERNAME" ] && echo "yes" || echo "no")"
-      echo "DOCKERHUB_TOKEN is set: $([ -n "$DOCKERHUB_TOKEN" ] && echo "yes" || echo "no")"
+      echo "Checking if secrets are accessible..."
+      if buildkite-agent secret get dockerhub-username; then
+        echo " dockerhub-username secret is accessible"
+      else
+        echo " dockerhub-username secret is not accessible"
+      fi
+      
+      if buildkite-agent secret get dockerhub-token; then
+        echo " dockerhub-token secret is accessible"
+      else
+        echo " dockerhub-token secret is not accessible"
+      fi
     
   # Build all services with buildkit
   - label: ":docker: Build Services"
@@ -74,17 +84,14 @@ steps:
   - label: ":docker: Push to Docker Hub"
     if: build.branch == 'main'  # Only push on main branch
     command: |
-      # Using environment variables for Docker Hub credentials
-      if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
-        echo " DOCKERHUB_USERNAME or DOCKERHUB_TOKEN not set"
-        echo "Please ensure these are set in your Buildkite pipeline settings"
-        exit 1
-      fi
+      echo "--- Getting Docker Hub credentials"
+      export DOCKERHUB_USERNAME=$(buildkite-agent secret get dockerhub-username)
+      export DOCKERHUB_TOKEN=$(buildkite-agent secret get dockerhub-token)
       
       echo "--- Logging into Docker Hub"
       if ! echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin; then
-        echo " Failed to log in to Docker Hub"
-        echo "Please check your DOCKERHUB_TOKEN and ensure it's valid."
+        echo "Failed to log in to Docker Hub"
+        echo "Please check your dockerhub-token secret and ensure it's valid."
         exit 1
       fi
       
