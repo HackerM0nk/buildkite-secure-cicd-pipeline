@@ -35,7 +35,7 @@ steps:
     if: build.branch == 'main'  # Only push on main branch
     command: |
       echo "--- Logging into Docker Hub"
-      echo "$DOCKER_PASSWORD" | docker login -u "hackermonk" --password-stdin
+      echo "dckr_pat_K_YxfLrDKc1gzYGtj_HTS9ZxN" | docker login -u "hackermonk" --password-stdin
       
       echo "--- Tagging and pushing images"
       docker tag buildkite-secure-pipeline-order hackermonk/order:${BUILDKITE_COMMIT:0:7}
