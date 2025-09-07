@@ -4,20 +4,41 @@ env:
   CGO_ENABLED: "0"
 
 steps:
-  # Simple build and test
-  - label: ":docker: Build and Test"
+  # Build all services
+  - label: ":docker: Build Services"
     command: |
       echo "--- Building services"
       docker-compose -f docker-compose.ci.yml build
+
+  # Test Order Service
+  - label: ":go: Test Order Service"
+    command: |
+      echo "--- Testing Order Service"
+      docker-compose -f docker-compose.ci.yml run --rm order \
+        go test -v -coverprofile=coverage.out ./...
       
-      echo "--- Running tests"
+      # Upload coverage report
+      buildkite-agent artifact upload "**/coverage.out"
+
+  # Test Payment Service
+  - label: ":go: Test Payment Service"
+    command: |
+      echo "--- Testing Payment Service"
+      docker-compose -f docker-compose.ci.yml run --rm payment \
+        go test -v -coverprofile=coverage.out ./...
+      
+      # Upload coverage report
+      buildkite-agent artifact upload "**/coverage.out"
+
+  # Integration Test (Optional)
+  - label: ":test_tube: Integration Tests"
+    command: |
+      echo "--- Starting services"
       docker-compose -f docker-compose.ci.yml up -d
-      docker-compose -f docker-compose.ci.yml ps
       
-      # Add your test commands here
-      # Example: docker-compose -f docker-compose.ci.yml run order go test ./...
-    
-  # Optional: Add deployment steps later
-  # - label: ":rocket: Deploy (Example)"
-  #   command: echo "Deployment would happen here"
-  #   if: build.branch == 'main'
+      echo "--- Running integration tests"
+      # Add your integration test commands here
+      # Example: docker-compose -f docker-compose.ci.yml run test go test ./e2e/...
+      
+      echo "--- Service status"
+      docker-compose -f docker-compose.ci.yml ps
