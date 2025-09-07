@@ -1,24 +1,30 @@
 # Build stage
-FROM golang:1.19 AS builder
+FROM golang:1.19-alpine AS builder
+RUN apk add --no-cache git
 WORKDIR /usr/src/app
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o payment ./cmd/main.go
 
-# Runtime stage with a minimal image including shell
+# Download dependencies first (better layer caching)
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source and build
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags='-w -s' -o payment ./cmd/main.go
+
+# Final stage
 FROM alpine:3.16
 WORKDIR /app
 
-# Install bash and other necessary tools
-RUN apk add --no-cache bash ca-certificates
+# Only install what's necessary
+RUN apk add --no-cache ca-certificates
 
-# Copy the binary from builder
-COPY --from=builder /usr/src/app/payment /app/payment
+# Copy only the binary and necessary files
+COPY --from=builder /usr/src/app/payment /app/
 
 # For testing
-RUN mkdir -p /app/cmd
 COPY --from=builder /usr/src/app/go.mod /app/
 COPY --from=builder /usr/src/app/go.sum /app/
 COPY --from=builder /usr/src/app/internal /app/internal
 
-# Default command can be overridden in docker-compose
+# Default command
 CMD ["/app/payment"]

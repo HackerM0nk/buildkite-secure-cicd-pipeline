@@ -4,11 +4,18 @@ env:
   CGO_ENABLED: "0"
 
 steps:
-  # Build all services
+  # Build all services with buildkit
   - label: ":docker: Build Services"
     command: |
       echo "--- Building services"
-      docker-compose -f docker-compose.ci.yml build
+      # Enable Docker BuildKit for faster builds
+      export DOCKER_BUILDKIT=1
+      # Build in parallel
+      docker-compose -f docker-compose.ci.yml build --parallel --no-cache
+      
+      # Save build cache for future builds
+      echo "--- Saving build cache"
+      docker system df -v
 
   # Test Services
   - label: ":go: Test Services"
