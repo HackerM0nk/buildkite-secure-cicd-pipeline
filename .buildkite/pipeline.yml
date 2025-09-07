@@ -107,13 +107,14 @@ steps:
       cd kubernetes
       KUBE_DIR=$(pwd)
       
-      # Process and apply each manifest
-      for manifest in order-deployment.yaml payment-deployment.yaml mysql-deployment.yaml services.yaml; do
+      # Process and apply each manifest from kubernetes directory
+      for manifest in kubernetes/order-deployment.yaml kubernetes/payment-deployment.yaml kubernetes/mysql-deployment.yaml kubernetes/services.yaml; do
         if [ -f "$manifest" ]; then
           echo "Processing $manifest..."
           envsubst < "$manifest" | kubectl apply -f - || echo "Failed to apply $manifest"
         else
-          echo "Warning: $manifest not found"
+          echo "Error: Required manifest $manifest not found"
+          exit 1
         fi
       done
       
