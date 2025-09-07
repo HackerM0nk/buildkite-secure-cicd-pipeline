@@ -7,8 +7,17 @@ steps:
   - label: ":pencil: Check Environment Variables"
     command: |
       echo "--- Environment Variables"
-      echo "DOCKERHUB_USERNAME: ${DOCKERHUB_USERNAME:-Not Set}"
-      echo "DOCKERHUB_TOKEN: ${DOCKERHUB_TOKEN:+Set (but hidden for security)}"
+      if [ -n "$DOCKERHUB_USERNAME" ]; then
+        echo "✅ DOCKERHUB_USERNAME is set"
+      else
+        echo "❌ DOCKERHUB_USERNAME is not set"
+      fi
+      
+      if [ -n "$DOCKERHUB_TOKEN" ]; then
+        echo "✅ DOCKERHUB_TOKEN is set (value hidden for security)"
+      else
+        echo "❌ DOCKERHUB_TOKEN is not set"
+      fi
     
   # Build all services with buildkit
   - label: ":docker: Build Services"
