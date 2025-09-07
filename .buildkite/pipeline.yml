@@ -10,25 +10,23 @@ steps:
       echo "--- Building services"
       docker-compose -f docker-compose.ci.yml build
 
-  # Test Order Service
-  - label: ":go: Test Order Service"
+  # Test Services
+  - label: ":go: Test Services"
     command: |
-      echo "--- Testing Order Service"
-      docker-compose -f docker-compose.ci.yml run --rm order \
-        go test -v -coverprofile=coverage.out ./...
+      echo "--- Starting test environment"
+      docker-compose -f docker-compose.ci.yml up -d mysql
       
-      # Upload coverage report
-      buildkite-agent artifact upload "**/coverage.out"
-
-  # Test Payment Service
-  - label: ":go: Test Payment Service"
-    command: |
-      echo "--- Testing Payment Service"
-      docker-compose -f docker-compose.ci.yml run --rm payment \
-        go test -v -coverprofile=coverage.out ./...
+      echo "--- Waiting for MySQL to be ready"
+      sleep 30
       
-      # Upload coverage report
-      buildkite-agent artifact upload "**/coverage.out"
+      echo "--- Running Order Service tests"
+      docker-compose -f docker-compose.ci.yml run --rm order
+      
+      echo "--- Running Payment Service tests"
+      docker-compose -f docker-compose.ci.yml run --rm payment
+      
+      echo "--- Cleaning up"
+      docker-compose -f docker-compose.ci.yml down -v
 
   # Login to Docker Hub and push images
   - label: ":docker: Push to Docker Hub"
