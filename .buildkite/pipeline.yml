@@ -8,16 +8,16 @@ steps:
     command: |
       echo "--- Environment Variables"
       echo "Checking if secrets are accessible..."
-      if buildkite-agent secret get dockerhub-username; then
-        echo " dockerhub-username secret is accessible"
+      if buildkite-agent secret get DOCKERHUB_USERNAME; then
+        echo " DOCKERHUB_USERNAME secret is accessible"
       else
-        echo " dockerhub-username secret is not accessible"
+        echo " DOCKERHUB_USERNAME secret is not accessible"
       fi
       
-      if buildkite-agent secret get dockerhub-token; then
-        echo " dockerhub-token secret is accessible"
+      if buildkite-agent secret get DOCKERHUB_TOKEN; then
+        echo " DOCKERHUB_TOKEN secret is accessible"
       else
-        echo " dockerhub-token secret is not accessible"
+        echo " DOCKERHUB_TOKEN secret is not accessible"
       fi
     
   # Build all services with buildkit
@@ -85,13 +85,13 @@ steps:
     if: build.branch == 'main'  # Only push on main branch
     command: |
       echo "--- Getting Docker Hub credentials"
-      export DOCKERHUB_USERNAME=$(buildkite-agent secret get dockerhub-username)
-      export DOCKERHUB_TOKEN=$(buildkite-agent secret get dockerhub-token)
+      export DOCKERHUB_USERNAME=$(buildkite-agent secret get DOCKERHUB_USERNAME)
+      export DOCKERHUB_TOKEN=$(buildkite-agent secret get DOCKERHUB_TOKEN)
       
       echo "--- Logging into Docker Hub"
       if ! echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin; then
         echo "Failed to log in to Docker Hub"
-        echo "Please check your dockerhub-token secret and ensure it's valid."
+        echo "Please check your DOCKERHUB_TOKEN secret and ensure it's valid."
         exit 1
       fi
       
