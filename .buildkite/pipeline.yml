@@ -1,0 +1,103 @@
+env:
+  # Secrets are injected via Buildkite's secret management
+  BUILDKITE_PLUGIN_DOCKER_LOGIN: true
+  GO111MODULE: "on"
+  GOFLAGS: "-mod=mod"
+  CGO_ENABLED: "0"
+  GOSEC_OPTS: "-exclude=G101,G107,G201,G202,G204,G301,G304,G401,G402,G404,G501,G602"
+
+steps:
+  # Security Scanning
+  - label: ":shield: Security Scan"
+    plugins:
+      - docker#v5.3.0:
+          image: "golang:1.21"
+          workdir: /app
+          volumes: [".:/app"]
+          environment:
+            - GOSEC_OPTS
+          command: |
+            set -euo pipefail
+            
+            # Install security tools
+            go install github.com/securego/gosec/v2/cmd/gosec@latest
+            go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+            go install golang.org/x/vuln/cmd/govulncheck@latest
+            
+            # Run security scans
+            echo "--- Running SAST with gosec"
+            gosec $GOSEC_OPTS -fmt=json -out=security-report.json ./...
+            buildkite-agent artifact upload security-report.json
+            
+            echo "--- Running static analysis with golangci-lint"
+            golangci-lint run --out-format=json > lint-report.json
+            buildkite-agent artifact upload lint-report.json
+            
+            echo "--- Checking for vulnerabilities"
+            govulncheck -json ./... > vuln-report.json
+            buildkite-agent artifact upload vuln-report.json
+
+  # Build and Test
+  - label: ":docker: Build and Test"
+    plugins:
+      - docker-login#v2.0.1:
+          username: ${DOCKER_USERNAME}
+          password-env: DOCKER_PASSWORD
+      - docker-compose#v4.14.0:
+          run: order
+          build: order
+          config: docker-compose.ci.yml
+          env:
+            - GO111MODULE=on
+      - docker-compose#v4.14.0:
+          run: payment
+          build: payment
+          config: docker-compose.ci.yml
+          env:
+            - GO111MODULE=on
+
+  # Security Gate
+  - block: "Security Review Required"
+    prompt: "Have you reviewed the security scan results?"
+    fields:
+      - select: "Security Status"
+        key: "security_status"
+        required: true
+        options:
+          - label: "✅ All issues reviewed and approved"
+            value: "approved"
+          - label: "❌ Block deployment - Critical issues found"
+            value: "blocked"
+
+  # Deployment
+  - label: ":rocket: Deploy to Staging"
+    if: build.branch != 'main' && build.env.security_status == 'approved'
+    command: |
+      set -euo pipefail
+      export ENVIRONMENT=staging
+      ./.buildkite/deploy.sh
+    env:
+      KUBE_CONFIG: ${KUBE_CONFIG_STAGING}
+      DOCKER_USERNAME: ${DOCKER_USERNAME}
+      DOCKER_PASSWORD: ${DOCKER_PASSWORD}
+
+  # Production Deployment
+  - label: ":rocket: Deploy to Production"
+    if: build.branch == 'main' && build.env.security_status == 'approved'
+    command: |
+      set -euo pipefail
+      export ENVIRONMENT=production
+      ./.buildkite/deploy.sh
+    env:
+      KUBE_CONFIG: ${KUBE_CONFIG_PROD}
+      DOCKER_USERNAME: ${DOCKER_USERNAME}
+      DOCKER_PASSWORD: ${DOCKER_PASSWORD}
+
+  # Post-deployment verification
+  - label: ":white_check_mark: Verify Deployment"
+    command: |
+      set -euo pipefail
+      kubectl get pods -n go-microservices-${ENVIRONMENT:-staging}
+      # Add health check endpoints here
+    env:
+      KUBECONFIG: ${KUBE_CONFIG_STAGING}
