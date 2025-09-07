@@ -53,8 +53,15 @@ steps:
     if: build.branch == 'main'  # Only push on main branch
     command: |
       echo "--- Logging into Docker Hub"
-      # Using environment variable for token
-      echo "$DOCKERHUB_TOKEN" | docker login -u "hackermonk" --password-stdin
+      # Using environment variable for token with proper error handling
+      if [ -z "$DOCKERHUB_TOKEN" ]; then
+        echo "❌ DOCKERHUB_TOKEN is not set"
+        exit 1
+      fi
+      echo "$DOCKERHUB_TOKEN" | docker login -u "hackermonk" --password-stdin || {
+        echo "❌ Failed to log in to Docker Hub"
+        exit 1
+      }
       
       echo "--- Tagging and pushing images"
       docker tag buildkite-secure-pipeline-order hackermonk/order:${BUILDKITE_COMMIT:0:7}
