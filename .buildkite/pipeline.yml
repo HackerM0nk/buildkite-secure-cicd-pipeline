@@ -68,11 +68,12 @@ steps:
   - label: ":docker: Push to Docker Hub"
     if: build.branch == 'main'  # Only push on main branch
     command: |
-      # Hardcoded token for testing - replace with environment variable in production
-      DOCKERHUB_TOKEN="dckr_pat_2TjG1Vk0Y3X6KQ9Z8X7H6Q"  # This is a sample token, replace with your actual token
+      # Hardcoded credentials for testing - replace with environment variables in production
+      DOCKERHUB_USERNAME="hackermonk"
+      DOCKERHUB_PASSWORD="dckr_pat_2TjG1Vk0Y3X6KQ9Z8X7H6Q"  # Replace with your actual token
       
       echo "--- Logging into Docker Hub"
-      if ! echo "$DOCKERHUB_TOKEN" | docker login -u "hackermonk" --password-stdin; then
+      if ! echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin; then
         echo "❌ Failed to log in to Docker Hub"
         echo "Please check your DOCKERHUB_TOKEN and ensure it's valid."
         exit 1

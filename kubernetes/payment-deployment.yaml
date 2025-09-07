@@ -18,7 +18,7 @@ spec:
       - name: dockerhub-credentials
       containers:
       - name: payment
-        image: ${PAYMENT_IMAGE}
+        image: hackermonk/payment:${BUILDKITE_COMMIT:0:7}
         ports:
         - containerPort: 8081
         env:

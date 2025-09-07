@@ -18,7 +18,7 @@ spec:
       - name: dockerhub-credentials
       containers:
       - name: order
-        image: ${ORDER_IMAGE}
+        image: hackermonk/order:${BUILDKITE_COMMIT:0:7}
         ports:
         - containerPort: 8080
         env:
