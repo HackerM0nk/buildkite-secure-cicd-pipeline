@@ -70,10 +70,10 @@ steps:
     command: |
       # Hardcoded credentials for testing - replace with environment variables in production
       DOCKERHUB_USERNAME="hackermonk"
-      DOCKERHUB_PASSWORD="dckr_pat_2TjG1Vk0Y3X6KQ9Z8X7H6Q"  # Replace with your actual token
+      DOCKERHUB_TOKEN="dckr_pat_2TjG1Vk0Y3X6KQ9Z8X7H6Q"  # Replace with your actual token
       
       echo "--- Logging into Docker Hub"
-      if ! echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin; then
+      if ! echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin; then
         echo "❌ Failed to log in to Docker Hub"
         echo "Please check your DOCKERHUB_TOKEN and ensure it's valid."
         exit 1
