@@ -99,7 +99,7 @@ steps:
 
 # Login to Docker Hub and push images
 - label: ":docker: Push to Docker Hub"
-  if: build.branch == 'main' # Only push on main branch
+  if: build.branch == 'main'  # Only push on main branch
   command: |
     echo "--- Getting Docker Hub credentials"
     export DOCKER_USERNAME=$(buildkite-agent secret get DOCKER_USERNAME)
@@ -178,7 +178,7 @@ steps:
 
 # Deploy to local Kubernetes
 - label: ":kubernetes: Deploy to Local K8s"
-  if: build.branch == 'main' # Only deploy on main branch
+  if: build.branch == 'main'  # Only deploy on main branch
   command: |
     echo "--- Installing required tools"
     apt-get update && apt-get install -y gettext-base
