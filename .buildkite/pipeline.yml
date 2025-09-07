@@ -14,10 +14,10 @@ steps:
       if [ -n "$DOCKER_USERNAME" ]; then
         echo "✓ DOCKER_USERNAME secret is accessible (length: ${#DOCKER_USERNAME})"
       else
-        echo "⚠️  DOCKER_USERNAME secret is accessible but empty"
+        echo "  DOCKER_USERNAME secret is accessible but empty"
       fi
     else
-      echo "❌ DOCKER_USERNAME secret is not accessible or not set"
+      echo " DOCKER_USERNAME secret is not accessible or not set"
     fi
 
     # Check DOCKER_PASSWORD
@@ -25,10 +25,10 @@ steps:
       if [ -n "$DOCKER_PASSWORD" ]; then
         echo "✓ DOCKER_PASSWORD secret is accessible (length: ${#DOCKER_PASSWORD})"
       else
-        echo "⚠️  DOCKER_PASSWORD secret is accessible but empty"
+        echo "  DOCKER_PASSWORD secret is accessible but empty"
       fi
     else
-      echo "❌ DOCKER_PASSWORD secret is not accessible or not set"
+      echo " DOCKER_PASSWORD secret is not accessible or not set"
     fi
 
     # Check if we're in a private pipeline
