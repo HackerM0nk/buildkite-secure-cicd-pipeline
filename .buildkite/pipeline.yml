@@ -2,22 +2,71 @@ env:
   GO111MODULE: "on"
   GOFLAGS: "-mod=mod"
   CGO_ENABLED: "0"
+  BUILDKITE_ARTIFACT_UPLOAD_DESTINATION: "s3://buildkite-artifacts/$BUILDKITE_PIPELINE_SLUG/$BUILDKITE_BUILD_NUMBER"
 
 steps:
   - label: ":wrench: Tooling & Context"
-    command: .buildkite/steps/01_prep.sh
+    command: |
+      .buildkite/steps/01_prep.sh
+      # Save build environment for subsequent steps
+      env | grep -E '^(BUILD_|TAG=)' > build.env
+    artifact_paths:
+      - build.env
 
   - label: ":docker: Build (compose tests' images)"
-    command: .buildkite/steps/02_compose_build.sh
+    command: |
+      # Load build environment
+      if [ -f build.env ]; then
+        set -a
+        source build.env
+        set +a
+      fi
+      .buildkite/steps/02_compose_build.sh
+    artifact_paths:
+      - build.env
 
   - label: ":go: Test Services"
-    command: .buildkite/steps/03_tests.sh
+    command: |
+      # Load build environment
+      if [ -f build.env ]; then
+        set -a
+        source build.env
+        set +a
+      fi
+      .buildkite/steps/03_tests.sh
+    artifact_paths:
+      - build.env
 
   - label: ":package: Build k8s images for Minikube"
-    command: .buildkite/steps/04_build_images.sh
+    command: |
+      # Load build environment
+      if [ -f build.env ]; then
+        set -a
+        source build.env
+        set +a
+      fi
+      .buildkite/steps/04_build_images.sh
+    artifact_paths:
+      - build.env
 
   - label: ":minikube: Load images into cluster"
-    command: .buildkite/steps/05_minikube_load.sh
+    command: |
+      # Load build environment
+      if [ -f build.env ]; then
+        set -a
+        source build.env
+        set +a
+      fi
+      .buildkite/steps/05_minikube_load.sh
+    artifact_paths:
+      - build.env
 
   - label: ":kubernetes: Deploy (no registry)"
-    command: .buildkite/steps/06_deploy.sh
+    command: |
+      # Load build environment
+      if [ -f build.env ]; then
+        set -a
+        source build.env
+        set +a
+      fi
+      .buildkite/steps/06_deploy.sh
