@@ -5,6 +5,16 @@ set -euo pipefail
 BUILD_DIR="${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/build"
 mkdir -p "$BUILD_DIR"
 
+# Ensure we can write to the build directory
+if ! touch "$BUILD_DIR/.test-write" 2>/dev/null; then
+  echo "--- Error: Cannot write to build directory: $BUILD_DIR"
+  echo "Current user: $(whoami)"
+  echo "Directory permissions:"
+  ls -ld "$BUILD_DIR" || true
+  exit 1
+fi
+rm -f "$BUILD_DIR/.test-write"
+
 echo "--- Versions"
 docker --version
 kubectl version --client=true --output=yaml | sed -n '1,8p' || true
@@ -33,6 +43,18 @@ TAG="$(printf %s "$TAG" | tr -c 'A-Za-z0-9_.-' '-')"
 echo "tag=$TAG" > "$BUILD_DIR/.bk-tag"
 echo "Using TAG=$TAG"
 
+# Create build files
+echo "--- Creating build files"
+echo "arch=arm64" > "$BUILD_DIR/.bk-arch"
+cat "$BUILD_DIR/.bk-arch"
+
+# Set tag
+TAG="${BUILDKITE_COMMIT:0:7:-$BUILDKITE_BUILD_NUMBER}"
+[ -n "$TAG" ] || TAG="local-$(date +%s)"
+TAG="$(printf %s "$TAG" | tr -c 'A-Za-z0-9_.-' '-')"
+echo "tag=$TAG" > "$BUILD_DIR/.bk-tag"
+
 # Export BUILD_DIR for other steps
-echo "--- Exporting build directory"
+echo "--- Exporting build environment"
 echo "BUILD_DIR=$BUILD_DIR" > "$BUILDKITE_ENV_FILE"
+chmod 644 "$BUILDKITE_ENV_FILE"
