@@ -17,6 +17,9 @@ All scans and SBOMs are uploaded as artifacts for auditability.
 
 ---
 
+---
+![Architecture Diagram](images/image.png)
+---
 
 ## Architecture
 
