@@ -3,38 +3,28 @@ kind: Deployment
 metadata:
   name: order
   namespace: order
-  labels:
-    app: order
+  labels: { app: order }
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      app: order
+  selector: { matchLabels: { app: order } }
   template:
-    metadata:
-      labels:
-        app: order
+    metadata: { labels: { app: order } }
     spec:
       containers:
         - name: order
           image: ${ORDER_IMAGE}
           imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8080
+          ports: [{ containerPort: 8080 }]
           env:
-            - name: ENV
-              value: "production"
-            - name: APPLICATION_PORT
-              value: "8080"
-            - name: DATA_SOURCE_URL
-              value: "user:password@tcp(mysql.mysql.svc.cluster.local:3306)/order?charset=utf8mb4&parseTime=True&loc=Local"
-            - name: PAYMENT_SERVICE_URL
-              value: "payment.payment.svc.cluster.local:8081"
-          livenessProbe:
-            httpGet: { path: /health, port: 8080 }
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            - { name: ENV,               value: "production" }
+            - { name: APPLICATION_PORT,  value: "8080" }
+            - { name: DATA_SOURCE_URL,   value: "user:password@tcp(mysql.mysql.svc.cluster.local:3306)/order?charset=utf8mb4&parseTime=True&loc=Local" }
+            - { name: PAYMENT_SERVICE_URL, value: "payment.payment.svc.cluster.local:8081" }
           readinessProbe:
-            httpGet: { path: /health, port: 8080 }
+            tcpSocket: { port: 8080 }
             initialDelaySeconds: 5
             periodSeconds: 5
+          livenessProbe:
+            tcpSocket: { port: 8080 }
+            initialDelaySeconds: 20
+            periodSeconds: 10

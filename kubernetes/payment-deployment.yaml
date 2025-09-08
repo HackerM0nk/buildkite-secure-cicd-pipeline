@@ -3,36 +3,27 @@ kind: Deployment
 metadata:
   name: payment
   namespace: payment
-  labels:
-    app: payment
+  labels: { app: payment }
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      app: payment
+  selector: { matchLabels: { app: payment } }
   template:
-    metadata:
-      labels:
-        app: payment
+    metadata: { labels: { app: payment } }
     spec:
       containers:
         - name: payment
           image: ${PAYMENT_IMAGE}
           imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8081
+          ports: [{ containerPort: 8081 }]
           env:
-            - name: ENV
-              value: "production"
-            - name: APPLICATION_PORT
-              value: "8081"
-            - name: DATA_SOURCE_URL
-              value: "user:password@tcp(mysql.mysql.svc.cluster.local:3306)/payment?charset=utf8mb4&parseTime=True&loc=Local"
-          livenessProbe:
-            httpGet: { path: /health, port: 8081 }
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            - { name: ENV,               value: "production" }
+            - { name: APPLICATION_PORT,  value: "8081" }
+            - { name: DATA_SOURCE_URL,   value: "user:password@tcp(mysql.mysql.svc.cluster.local:3306)/payment?charset=utf8mb4&parseTime=True&loc=Local" }
           readinessProbe:
-            httpGet: { path: /health, port: 8081 }
+            tcpSocket: { port: 8081 }
             initialDelaySeconds: 5
             periodSeconds: 5
+          livenessProbe:
+            tcpSocket: { port: 8081 }
+            initialDelaySeconds: 20
+            periodSeconds: 10

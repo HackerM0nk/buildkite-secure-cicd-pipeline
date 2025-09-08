@@ -20,7 +20,7 @@ services:
       APPLICATION_PORT: 8080
       ENV: "development"
       DATA_SOURCE_URL: "root:s3cr3t@tcp(mysql:3306)/order?charset=utf8mb4&parseTime=True&loc=Local"
-      PAYMENT_SERVICE_URL: "payment:8081"
+      PAYMENT_SERVICE_URL: "payment.payment.svc.cluster.local:8081"
   mysql:
     image: "mysql:8.0.30"
     environment:
