@@ -69,20 +69,20 @@ steps:
       - "artifacts/trivy-order.sarif"
       - "artifacts/trivy-payment.sarif"
 
-  # - key: sbom
-  #   label: ":page_facing_up: SBOM + sign"
-  #   depends_on: build
-  #   command: ".buildkite/steps/08_sbom_sign.sh"
-  #   artifact_paths:
-  #     - "artifacts/sbom-*.spdx.json"
-  #     - "artifacts/sbom-*.sig"
-  #     - "artifacts/cosign.*"
+  - key: sbom
+    label: ":page_facing_up: SBOM + sign"
+    depends_on: build
+    command: ".buildkite/steps/08_sbom_sign.sh"
+    artifact_paths:
+      - "artifacts/sbom-*.spdx.json"
+      - "artifacts/sbom-*.sig"
+      - "artifacts/cosign.*"
 
-  # # -------- Deploy --------
-  # - key: deploy
-  #   label: ":kubernetes: Deploy to Minikube"
-  #   depends_on:
-  #     - build
-  #     - trivy_img
-  #     - sbom
-  #   command: ".buildkite/steps/03_deploy.sh"
+  # -------- Deploy --------
+  - key: deploy
+    label: ":kubernetes: Deploy to Minikube"
+    depends_on:
+      - build
+      - trivy_img
+      - sbom
+    command: ".buildkite/steps/03_deploy.sh"
