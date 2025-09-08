@@ -13,14 +13,9 @@ steps:
       minikube version || true
       echo "--- Current kube-context"
       kubectl config current-context
-      echo "--- Detect node architecture"
-      ARCH="$(kubectl get nodes -o jsonpath='{.items[0].status.nodeInfo.architecture}')"
-      echo "Detected node arch: ${ARCH:-unknown}"
-      if [ -z "${ARCH:-}" ]; then
-        echo "Could not detect cluster architecture. Is Minikube running?"
-        exit 1
-      fi
-      echo "arch=${ARCH}" > .bk-arch
+      # Hardcoded for M3 Mac (arm64)
+      echo "--- Using arm64 for M3 Mac"
+      echo "arch=arm64" > .bk-arch
 
   - label: ":docker: Build (compose tests' images)"
     command: |
@@ -60,12 +55,9 @@ steps:
     command: |
       set -euo pipefail
       TAG="${BUILDKITE_COMMIT:0:7}"
-      ARCH="$(sed -n 's/^arch=//p' .bk-arch)"
-      case "$ARCH" in
-        arm64)   PLATFORM="linux/arm64"; GOARCH="arm64" ;;
-        amd64|x86_64) PLATFORM="linux/amd64"; GOARCH="amd64" ;;
-        *) echo "Unknown arch '$ARCH'"; exit 1 ;;
-      esac
+      # Hardcoded for M3 Mac
+      PLATFORM="linux/arm64"
+      GOARCH="arm64"
       echo "--- Using PLATFORM=$PLATFORM GOARCH=$GOARCH TAG=$TAG"
       docker buildx create --use --name bkx || docker buildx use bkx
       # Order
