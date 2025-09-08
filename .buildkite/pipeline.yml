@@ -126,7 +126,7 @@ steps:
   - label: ":kubernetes: Deploy (no registry)"
     command: |
       set -euo pipefail
-      TAG="$(sed -n 's/^tag=//p' .bk-tag)"
+      TAG=$(sed -n 's/^tag=//p' .bk-tag)
       export ORDER_IMAGE="hackermonk/order:${TAG}"
       export PAYMENT_IMAGE="hackermonk/payment:${TAG}"
       echo "--- Using images:"
@@ -137,7 +137,7 @@ steps:
         if command -v apt-get >/dev/null 2>&1; then
           sudo apt-get update && sudo apt-get install -y gettext-base
         elif command -v brew >/dev/null 2>&1; then
-          brew install gettext && brew link --force gettext
+          brew install gettext
         else
           echo "envsubst not available and no package manager found"; exit 1
         fi
@@ -146,6 +146,7 @@ steps:
       cd kubernetes
       for m in mysql-deployment.yaml order-deployment.yaml payment-deployment.yaml services.yaml; do
         [ -f "$m" ] || { echo "Missing $m"; exit 1; }
+        echo "--- Applying $m"
         envsubst < "$m" | kubectl apply -f -
       done
 
