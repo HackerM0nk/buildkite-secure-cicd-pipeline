@@ -6,7 +6,7 @@ metadata:
 data:
   init.sql: |
     CREATE DATABASE IF NOT EXISTS orders;
-    CREATE DATABASE IF NOT EXISTS payments;
+    CREATE DATABASE IF NOT EXISTS payment;
 ---
 apiVersion: apps/v1
 kind: Deployment

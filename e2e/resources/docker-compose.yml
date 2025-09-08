@@ -8,7 +8,7 @@ services:
     environment:
       APPLICATION_PORT: 8081
       ENV: "development"
-      DATA_SOURCE_URL: "root:s3cr3t@tcp(mysql:3306)/payments?charset=utf8mb4&parseTime=True&loc=Local"
+      DATA_SOURCE_URL: "root:s3cr3t@tcp(mysql:3306)/payment?charset=utf8mb4&parseTime=True&loc=Local"
   order:
     depends_on:
       mysql:
