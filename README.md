@@ -16,10 +16,10 @@ Images are built with short, reproducible commit tags, loaded directly into Mini
 All scans and SBOMs are uploaded as artifacts for auditability.
 
 ---
-![Description of the image](/images/image.png)
+![Description of the image](https://github.com/username/repository/raw/branch/.buildkite/images/image.png)
 
 
-## Architecture (at a glance)
+## Architecture
 
 - **Order service**
   - Serves health on HTTP; calls `payment` over gRPC
