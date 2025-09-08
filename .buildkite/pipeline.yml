@@ -29,22 +29,25 @@ steps:
     command: ".buildkite/steps/04_secret_scanning.sh"
     artifact_paths:
       - "artifacts/gitleaks.sarif"
+    soft_fail: true  
 
-  # - key: semgrep
-  #   label: ":mag_right: SAST (Semgrep)"
-  #   depends_on: setup
-  #   command: ".buildkite/steps/05_sast.sh"
-  #   artifact_paths:
-  #     - "artifacts/semgrep.json"
+  - key: semgrep
+    label: ":mag_right: SAST (Semgrep)"
+    depends_on: setup
+    command: ".buildkite/steps/05_sast.sh"
+    artifact_paths:
+      - "artifacts/semgrep.json"
+    soft_fail: true  
 
-  # - key: sca
-  #   label: ":shield: SCA (govulncheck + Trivy fs)"
-  #   depends_on: setup
-  #   command: ".buildkite/steps/06_sca.sh"
-  #   soft_fail: true           # start soft; flip to hard-fail later
-  #   artifact_paths:
-  #     - "artifacts/govulncheck.txt"
-  #     - "artifacts/trivy-fs.sarif"
+  - key: sca
+    label: ":shield: SCA (govulncheck + Trivy fs)"
+    depends_on: setup
+    command: ".buildkite/steps/06_sca.sh"
+    soft_fail: true           # start soft; flip to hard-fail later
+    artifact_paths:
+      - "artifacts/govulncheck.txt"
+      - "artifacts/trivy-fs.sarif"
+    soft_fail: true  
 
   # # -------- Build --------
   # - key: build

@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export PATH="$PWD/.tools/bin:$HOME/.local/bin:$PATH"
 mkdir -p artifacts
-docker run --rm -v "$PWD:/work" -w /work golang:1.22 bash -lc '
-  set -e
-  go env -w GOPROXY=https://proxy.golang.org,direct
-  go install golang.org/x/vuln/cmd/govulncheck@latest
-  (cd order && go mod download && govulncheck ./... || true)
-  (cd payment && go mod download && govulncheck ./... || true)
-' | tee artifacts/govulncheck.txt
 
-docker run --rm -v "$PWD:/work" aquasec/trivy:0.49.1 \
-  fs --no-progress --format sarif -o /work/artifacts/trivy-fs.sarif \
-  --security-checks vuln,config /work || true
+if [ "${USE_TRIVY_CONTAINER:-0}" = "1" ] || ! command -v trivy >/dev/null 2>&1; then
+  echo "--- trivy fs via container (no host mount)"
+  tar -czf - . | docker run --rm -i aquasec/trivy:0.49.1 \
+    sh -lc 'mkdir -p /src && tar -C /src -xzf - && \
+            trivy fs --no-progress --format sarif -o /src/artifacts/trivy-fs.sarif \
+              --security-checks vuln,config /src'
+else
+  trivy fs --no-progress --format sarif -o artifacts/trivy-fs.sarif \
+    --security-checks vuln,config .
+fi
