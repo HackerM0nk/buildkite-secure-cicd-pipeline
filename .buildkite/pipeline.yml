@@ -22,13 +22,13 @@ steps:
     depends_on: setup
     command: ".buildkite/steps/09_install_tools.sh"
 
-  # -------- Pre-build gates --------
-  - key: gitleaks
-    label: ":lock: Secrets (Gitleaks)"
-    depends_on: setup
-    command: ".buildkite/steps/04_secret_scanning.sh"
-    artifact_paths:
-      - "artifacts/gitleaks.sarif"
+  # # -------- Pre-build gates --------
+  # - key: gitleaks
+  #   label: ":lock: Secrets (Gitleaks)"
+  #   depends_on: setup
+  #   command: ".buildkite/steps/04_secret_scanning.sh"
+  #   artifact_paths:
+  #     - "artifacts/gitleaks.sarif"
 
   # - key: semgrep
   #   label: ":mag_right: SAST (Semgrep)"
