@@ -17,11 +17,11 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} \
     go build -ldflags='-w -s' -o order ./cmd/main.go
 
 # Final stage
-FROM --platform=linux/${GOARCH} alpine:3.16
+FROM --platform=linux/${GOARCH} golang:1.19-alpine
 WORKDIR /app
 
-# Only install what's necessary
-RUN apk add --no-cache ca-certificates
+# Install necessary tools for testing
+RUN apk add --no-cache ca-certificates git
 
 # Copy only the binary and necessary files
 COPY --from=builder /usr/src/app/order /app/
