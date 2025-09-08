@@ -3,21 +3,20 @@ env:
   GOFLAGS: "-mod=mod"
   CGO_ENABLED: "0"
   BUILDKITE_ARTIFACT_UPLOAD_DESTINATION: "s3://buildkite-artifacts/$BUILDKITE_PIPELINE_SLUG/$BUILDKITE_BUILD_NUMBER"
+  TAG: ${BUILDKITE_COMMIT:0:7}
+  ARCH: "linux/arm64"
 
 steps:
-  - label: ":wrench: Tooling & Context"
+  - label: ":wrench: Setup Environment"
     command: |
-      .buildkite/steps/01_prep.sh
-      # Save build environment for subsequent steps
-      env | grep -E '^(BUILD_|TAG=)' > build.env
-    artifact_paths:
-      - build.env
+      echo "--- Setting up build environment"
+      echo "Build number: $BUILDKITE_BUILD_NUMBER"
+      echo "Commit: $BUILDKITE_COMMIT"
+      echo "Tag: $TAG"
+      echo "Architecture: $ARCH"
 
-  - label: ":docker: Build (compose tests' images)"
-    command: |
-      # Load build environment
-      if [ -f build.env ]; then
-        set -a
+  - label: ":docker: Build and Test"
+    command: .buildkite/steps/02_compose_build.sh
         source build.env
         set +a
       fi

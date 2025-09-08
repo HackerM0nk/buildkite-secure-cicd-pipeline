@@ -1,5 +1,9 @@
+# Build arguments
+ARG TAG=latest
+ARG GOARCH=amd64
+
 # Build stage
-FROM golang:1.19-alpine AS builder
+FROM --platform=linux/${GOARCH} golang:1.19-alpine AS builder
 RUN apk add --no-cache git
 WORKDIR /usr/src/app
 
@@ -9,10 +13,11 @@ RUN go mod download
 
 # Copy source and build
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags='-w -s' -o payment ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} \
+    go build -ldflags='-w -s' -o payment ./cmd/main.go
 
 # Final stage
-FROM alpine:3.16
+FROM --platform=linux/${GOARCH} alpine:3.16
 WORKDIR /app
 
 # Only install what's necessary
