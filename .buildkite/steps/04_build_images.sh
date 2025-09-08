@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
-ARCH="$(sed -n 's/^arch=//p' "$REPO_ROOT/.bk-arch")"
-TAG="$(sed -n 's/^tag=//p' "$REPO_ROOT/.bk-tag")"
+# Source the build environment
+if [ -f "$BUILDKITE_ENV_FILE" ]; then
+  source "$BUILDKITE_ENV_FILE"
+fi
+
+# Default BUILD_DIR if not set
+BUILD_DIR="${BUILD_DIR:-$BUILDKITE_BUILD_CHECKOUT_PATH/.buildkite/build}"
+
+ARCH="$(sed -n 's/^arch=//p' "$BUILD_DIR/.bk-arch")"
+TAG="$(sed -n 's/^tag=//p' "$BUILD_DIR/.bk-tag")"
 [ -n "$ARCH" ] || { echo "FATAL: .bk-arch missing"; exit 1; }
 [ -n "$TAG" ]  || { echo "FATAL: .bk-tag missing"; exit 1; }
 

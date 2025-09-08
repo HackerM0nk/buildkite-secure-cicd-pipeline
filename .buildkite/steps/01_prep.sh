@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Create build directory in the workspace
+BUILD_DIR="${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/build"
+mkdir -p "$BUILD_DIR"
+
 echo "--- Versions"
 docker --version
 kubectl version --client=true --output=yaml | sed -n '1,8p' || true
@@ -10,9 +14,8 @@ kubectl config current-context || true
 
 echo "--- Decide architecture"
 # Hardcode for M3 (arm64); switch to detection later if you prefer
-REPO_ROOT="$(git rev-parse --show-toplevel)"
-echo "arch=arm64" > "$REPO_ROOT/.bk-arch"
-cat "$REPO_ROOT/.bk-arch"
+echo "arch=arm64" > "$BUILD_DIR/.bk-arch"
+cat "$BUILD_DIR/.bk-arch"
 
 echo "--- Decide tag"
 TAG=""
@@ -27,5 +30,9 @@ fi
 # sanitize and validate
 TAG="$(printf %s "$TAG" | tr -c 'A-Za-z0-9_.-' '-')"
 [ -n "$TAG" ] || { echo "FATAL: computed TAG is empty"; exit 1; }
-echo "tag=$TAG" > "$REPO_ROOT/.bk-tag"
+echo "tag=$TAG" > "$BUILD_DIR/.bk-tag"
 echo "Using TAG=$TAG"
+
+# Export BUILD_DIR for other steps
+echo "--- Exporting build directory"
+echo "BUILD_DIR=$BUILD_DIR" > "$BUILDKITE_ENV_FILE"
