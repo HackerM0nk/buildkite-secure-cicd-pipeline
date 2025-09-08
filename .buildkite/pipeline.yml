@@ -17,6 +17,11 @@ steps:
     label: ":wrench: Setup"
     command: ".buildkite/steps/01_setup.sh"
 
+  - key: tools
+    label: ":hammer_and_wrench: Install scan tools"
+    depends_on: setup
+    command: ".buildkite/steps/09_install_tools.sh"
+
   # -------- Pre-build gates --------
   - key: gitleaks
     label: ":lock: Secrets (Gitleaks)"
