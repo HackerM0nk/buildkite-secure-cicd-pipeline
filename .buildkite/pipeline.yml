@@ -2,7 +2,6 @@ env:
   GO111MODULE: "on"
   GOFLAGS: "-mod=mod"
   CGO_ENABLED: "0"
-  BUILDKITE_ARTIFACT_UPLOAD_DESTINATION: "s3://buildkite-artifacts/$BUILDKITE_PIPELINE_SLUG/$BUILDKITE_BUILD_NUMBER"
   TAG: ${BUILDKITE_COMMIT:0:7}
   ARCH: "linux/arm64"
 
@@ -17,55 +16,18 @@ steps:
 
   - label: ":docker: Build and Test"
     command: .buildkite/steps/02_compose_build.sh
-        source build.env
-        set +a
-      fi
-      .buildkite/steps/02_compose_build.sh
-    artifact_paths:
-      - build.env
 
   - label: ":go: Test Services"
     command: |
-      # Load build environment
-      if [ -f build.env ]; then
-        set -a
-        source build.env
-        set +a
-      fi
-      .buildkite/steps/03_tests.sh
-    artifact_paths:
-      - build.env
+      echo "--- Running tests"
+      docker-compose -f docker-compose.ci.yml up --exit-code-from order
+      docker-compose -f docker-compose.ci.yml up --exit-code-from payment
 
   - label: ":package: Build k8s images for Minikube"
-    command: |
-      # Load build environment
-      if [ -f build.env ]; then
-        set -a
-        source build.env
-        set +a
-      fi
-      .buildkite/steps/04_build_images.sh
-    artifact_paths:
-      - build.env
+    command: .buildkite/steps/04_build_images.sh
 
-  - label: ":minikube: Load images into cluster"
-    command: |
-      # Load build environment
-      if [ -f build.env ]; then
-        set -a
-        source build.env
-        set +a
-      fi
-      .buildkite/steps/05_minikube_load.sh
-    artifact_paths:
-      - build.env
+  - label: ":kubernetes: Deploy to Minikube"
+    command: .buildkite/steps/05_deploy_minikube.sh
 
   - label: ":kubernetes: Deploy (no registry)"
-    command: |
-      # Load build environment
-      if [ -f build.env ]; then
-        set -a
-        source build.env
-        set +a
-      fi
-      .buildkite/steps/06_deploy.sh
+    command: .buildkite/steps/06_deploy.sh

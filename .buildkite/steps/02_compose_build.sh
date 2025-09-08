@@ -12,7 +12,7 @@ export DOCKER_BUILDKIT=1
 
 # Build services using docker-compose
 echo "--- Building services with docker-compose"
-docker-compose -f docker-compose.ci.yml build --progress=plain --build-arg TAG=$TAG --build-arg GOARCH=${ARCH##*/}
+docker-compose -f docker-compose.ci.yml build --build-arg TAG=$TAG
 
 # Show disk usage
 echo "--- Docker disk usage"

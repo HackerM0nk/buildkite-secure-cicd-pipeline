@@ -19,7 +19,7 @@ services:
       dockerfile: Dockerfile
       args:
         TAG: $TAG
-        GOARCH: ${ARCH##*/}
+        GOARCH: arm64  # Simplified since we're only building for arm64
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
@@ -40,7 +40,7 @@ services:
       dockerfile: Dockerfile
       args:
         TAG: $TAG
-        GOARCH: ${ARCH##*/}
+        GOARCH: arm64  # Simplified since we're only building for arm64
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
