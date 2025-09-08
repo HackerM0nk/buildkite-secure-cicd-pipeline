@@ -1,4 +1,3 @@
-````markdown
 # A Practical Security-First Go Microservices Stack on Buildkite + Minikube
 
 **Author:** Your Name  
@@ -117,7 +116,3 @@ kubectl -n order run grpcurl --restart=Never --rm -it \
 * **OPA/Gatekeeper** policies (no `latest`, resource limits, signed SBOM required)
 * **Sigstore** (cosign sign & verify; Rekor transparency log) with GHCR
 * **Observability**: in-cluster Jaeger + OTEL traces across calls
-
-```
-::contentReference[oaicite:0]{index=0}
-```
