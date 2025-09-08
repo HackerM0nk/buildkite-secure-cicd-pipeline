@@ -1,150 +1,123 @@
-# Secure Microservices with Buildkite CI/CD
+````markdown
+# A Practical Security-First Go Microservices Stack on Buildkite + Minikube
 
-A production-grade microservices demo showcasing secure CI/CD practices with Buildkite, Kubernetes, and security scanning.
+**Author:** Your Name  
+**Repo:** `HackerM0nk/buildkite-secure-cicd-pipeline` (branch: `test`)  
+**Stack:** Go (Order/Payment, gRPC) · MySQL · Docker · Kubernetes/Minikube · Buildkite  
+**Security:** Gitleaks · Semgrep · OSV (Go SCA) · Trivy (image) · SBOM (Syft/Trivy) · Cosign (sign-blob)
 
-## 🛡️ Security Features
+---
 
-- **Secrets Management**: Environment-based configuration with secure defaults
-- **Container Security**: Non-root users, read-only filesystems, and minimal base images
-- **Network Policies**: Zero-trust network model between services
-- **Security Scanning**: SAST, SCA, and container vulnerability scanning
-- **Kubernetes Hardening**: Pod security policies and network policies
+## What this is
 
-## 🚀 Quick Start
+Two Go services — **order** (HTTP REST + gRPC gateway) and **payment** (gRPC) — talk to **MySQL**.  
+Everything is **containerized and continuously deployed** to **Minikube** across three namespaces (`order`, `payment`, `mysql`) on every Buildkite run.
 
-### Prerequisites
+The pipeline is **security-first** and **end-to-end**:
+**secret scanning → SAST → SCA → build → image scan → SBOM & cryptographic signing → deploy** — all **without any external registry**.  
+Images are built with short, reproducible commit tags, loaded directly into Minikube, manifests are templated via `envsubst`, and the result is live pods you can verify with `kubectl` in minutes.  
+All scans and SBOMs are uploaded as artifacts for auditability.
 
-- Docker & Docker Compose
-- Kubernetes (Docker Desktop or Minikube)
-- kubectl
-- Buildkite Agent (for local testing)
+---
 
-### Local Development
+## Architecture (at a glance)
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-username/secure-microservices.git
-   cd secure-microservices
-   ```
+- **Order service**
+  - Serves health on HTTP; calls `payment` over gRPC
+  - Env: `ENV`, `APPLICATION_PORT`, `DATA_SOURCE_URL`, `PAYMENT_SERVICE_URL`
 
-2. **Set up environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
+- **Payment service**
+  - gRPC server
+  - Env: `ENV`, `APPLICATION_PORT`, `DATA_SOURCE_URL`
 
-3. **Start local Kubernetes** (if using Minikube)
-   ```bash
-   minikube start
-   minikube addons enable ingress
-   ```
+- **MySQL**
+  - Bootstrapped via init SQL (DBs + users created)
 
-4. **Run locally with Skaffold**
-   ```bash
-   skaffold dev
-   ```
+- **Networking**
+  - `mysql.mysql.svc.cluster.local:3306`
+  - `order.order.svc.cluster.local:8080`
+  - `payment.payment.svc.cluster.local:8081`
+  - Order → Payment uses internal gRPC
 
-## 🛠️ CI/CD Pipeline
+---
 
-The Buildkite pipeline includes:
+## CI/CD (Buildkite) — flow
 
-1. **Security Scanning**
-   - SAST with gosec
-   - Dependency scanning with govulncheck
-   - Container vulnerability scanning
-   - Static analysis with golangci-lint
+1. **Setup**: compute `TAG`, print versions, persist `build.env`.
+2. **Pre-build security**:
+   - **Gitleaks** (secrets) → SARIF
+   - **Semgrep** (SAST) → SARIF
+   - **OSV** (Go SCA) → JSON/TXT
+3. **Build**: `docker buildx` images for `order` and `payment` (`linux/arm64`), tag `hackermonk/<svc>:$TAG`.
+4. **Post-build security**:
+   - **Trivy** image scan → SARIF/JSON
+   - **SBOM** (Syft SPDX JSON; fallback Trivy CycloneDX) → `artifacts/`
+   - **Cosign** `sign-blob` SBOMs → `*.sig`
+5. **Deploy**: `minikube image load`, `envsubst` manifests, `kubectl apply`.
+6. **Reports**: All artifacts uploaded under `artifacts/` and linked in a Buildkite annotation.
 
-2. **Build & Test**
-   - Multi-stage Docker builds
-   - Unit and integration tests
-   - Code coverage reports
+---
 
-3. **Deployment**
-   - Staging environment for PRs
-   - Production deployment from main branch
-   - Manual approval gates
+## Quickstart
 
-## 🔒 Security Best Practices
+**Prereqs**: Docker Desktop (Mac), Minikube + `kubectl`, Buildkite Agent.
 
-### Secrets Management
-- Never commit secrets to version control
-- Use Buildkite's secret management for CI/CD
-- Store local secrets in `.env` (gitignored)
+**Run**
+1. `minikube start`
+2. Push a commit → pipeline runs end-to-end.
 
-### Container Security
-- Minimal base images (scratch/distroless)
-- Non-root user execution
-- Read-only root filesystem
-- No shell access in production
-
-### Kubernetes Security
-- Network policies for least privilege
-- Pod security policies
-- Resource limits and requests
-- Liveness and readiness probes
-
-## Local Development
-
-1. **Start local Kubernetes cluster** (if using Minikube):
-   ```bash
-   minikube start
-   ```
-
-2. **Build and deploy services locally**:
-   ```bash
-   skaffold dev
-   ```
-
-## Buildkite CI/CD Setup
-
-1. **Fork this repository** to your GitHub account
-
-2. **Set up Buildkite pipeline**:
-   - Create a new pipeline in Buildkite
-   - Connect it to your GitHub repository
-   - Add the following environment variables in Buildkite:
-     - `DOCKER_USERNAME`: Your Docker Hub username
-     - `DOCKER_PASSWORD`: Your Docker Hub password/token
-     - `KUBE_CONFIG`: Your base64-encoded kubeconfig file
-
-3. **Deploy to Kubernetes**:
-   The pipeline includes manual approval steps for staging and production deployments.
-
-## Project Structure
-
-```
-.
-├── .buildkite/           # Buildkite pipeline configuration
-│   ├── pipeline.yml      # Build and deployment pipeline
-│   └── deploy.sh         # Deployment script
-├── order/                # Order service
-├── payment/              # Payment service
-├── mysql/                # MySQL configuration
-├── docker-compose.ci.yml # CI environment configuration
-└── skaffold.yaml         # Local development configuration
-```
-
-## Pipeline Workflow
-
-1. **Build and Test**:
-   - Builds Docker images for all services
-   - Runs unit and integration tests
-
-2. **Manual Approval**:
-   - Requires manual approval for staging deployment
-
-3. **Deploy to Staging**:
-   - Deploys to staging Kubernetes cluster
-   - Runs smoke tests
-
-4. **Manual Approval**:
-   - Requires manual approval for production deployment
-
-5. **Deploy to Development**:
-   - Deploys to Local MacOS based Kubernetes cluster
-
-# How to Run
-You can run project with following command
+**Verify**
 ```bash
-skaffold dev
+kubectl -n mysql   get pods,svc
+kubectl -n order   get pods,svc
+kubectl -n payment get pods,svc
+````
+
+**DB sanity**
+
+```bash
+kubectl -n mysql run mysql-client --rm -it --image=mysql:8.0 -- \
+  sh -lc 'mysql -h mysql -uroot -ppassword -e "SHOW DATABASES"'
+```
+
+**gRPC sanity (in-cluster)**
+
+```bash
+kubectl -n order run grpcurl --restart=Never --rm -it \
+  --image=fullstorydev/grpcurl:v1.9.1 -- \
+  sh -lc 'grpcurl -plaintext payment.payment.svc.cluster.local:8081 list || true'
+```
+
+---
+
+## Troubleshooting
+
+* **`DATA_SOURCE_URL environment variable is missing`**
+  Make sure Deployments set all required env vars (templated via `envsubst`).
+
+* **`Access denied for user … to database`**
+  Ensure MySQL init SQL creates the same DB/user/password your env points to.
+
+* **gRPC reflection not available**
+  Use `grpcurl` with protos or keep reflection enabled in the service.
+
+---
+
+## Why it’s useful
+
+* **Security first**: secrets, SAST, SCA, image scanning, SBOMs, signatures—built in.
+* **Reproducible**: no external registry; `minikube image load` for fast local demos.
+* **Extensible**: clean scripts, artifacts, and docs to build on.
+
+---
+
+## Roadmap
+
+* **mTLS & L7 authz** with Cilium/Istio between order↔payment
+* **OPA/Gatekeeper** policies (no `latest`, resource limits, signed SBOM required)
+* **Sigstore** (cosign sign & verify; Rekor transparency log) with GHCR
+* **Observability**: in-cluster Jaeger + OTEL traces across calls
+
+```
+::contentReference[oaicite:0]{index=0}
 ```

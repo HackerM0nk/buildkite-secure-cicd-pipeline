@@ -28,3 +28,10 @@ docker buildx build \
   --platform "$PLATFORM" \
   -t "hackermonk/payment:$TAG" \
   -f payment/Dockerfile payment --load
+
+mkdir -p artifacts
+echo "--- Saving images as tarballs for portable SBOM"
+docker save "hackermonk/order:${TAG}"   | gzip > "artifacts/order-${TAG}.tar.gz"
+docker save "hackermonk/payment:${TAG}" | gzip > "artifacts/payment-${TAG}.tar.gz"
+buildkite-agent artifact upload "artifacts/order-${TAG}.tar.gz"
+buildkite-agent artifact upload "artifacts/payment-${TAG}.tar.gz"
