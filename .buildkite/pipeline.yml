@@ -4,7 +4,7 @@ env:
   CGO_ENABLED: "0"
 
 steps:
-  - label: ":wrench: Tooling & Cluster Sanity"
+  - label: ":wrench: Tooling & Context"
     command: |
       set -euo pipefail
       echo "--- Versions"
@@ -12,10 +12,30 @@ steps:
       kubectl version --client=true --output=yaml | sed -n '1,8p' || true
       minikube version || true
       echo "--- Current kube-context"
-      kubectl config current-context
-      # Hardcoded for M3 Mac (arm64)
-      echo "--- Using arm64 for M3 Mac"
+      kubectl config current-context || true
+
+      echo "--- Decide architecture"
+      # Hardcode for M3 (arm64); change to detection if you prefer:
       echo "arch=arm64" > .bk-arch
+      cat .bk-arch
+
+      echo "--- Decide tag"
+      TAG=""
+      if [ -n "${BUILDKITE_COMMIT:-}" ]; then
+        TAG="${BUILDKITE_COMMIT:0:7}"
+      elif git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        TAG="$(git rev-parse --short HEAD)"
+      else
+        TAG="local-$(date +%s)"
+      fi
+
+      # sanitize + validate tag
+      TAG="${TAG//[^A-Za-z0-9_.-]/-}"
+      if [ -z "$TAG" ]; then
+        echo "FATAL: computed TAG is empty"; exit 1
+      fi
+      echo "tag=${TAG}" > .bk-tag
+      echo "Using TAG=$TAG"
 
   - label: ":docker: Build (compose tests' images)"
     command: |
@@ -32,6 +52,7 @@ steps:
       echo "--- Waiting for MySQL"
       sleep 25
       mkdir -p test-results
+
       echo "--- Order tests"
       docker run --rm \
         --network container:buildkite-secure-pipeline-mysql-1 \
@@ -39,6 +60,7 @@ steps:
         -v "$(pwd)/test-results:/test-results" \
         buildkite-secure-pipeline-order \
         sh -c "cd /app && go test -v ./... | tee /test-results/order-test-output.txt" || echo "Order tests failed but continuing..."
+
       echo "--- Payment tests"
       docker run --rm \
         --network container:buildkite-secure-pipeline-mysql-1 \
@@ -46,113 +68,71 @@ steps:
         -v "$(pwd)/test-results:/test-results" \
         buildkite-secure-pipeline-payment \
         sh -c "cd /app && go test -v ./... | tee /test-results/payment-test-output.txt" || echo "Payment tests failed but continuing..."
+
       echo "--- Test Results"
       cat test-results/*.txt || true
+
       echo "--- Cleanup"
       docker-compose -f docker-compose.ci.yml down -v
 
   - label: ":package: Build k8s images for Minikube"
     command: |
       set -euo pipefail
-      
-      # Set default tag if not in Buildkite
-      if [ -z "${BUILDKITE_COMMIT:-}" ]; then
-        export TAG="local-$(date +%s)"
-      else
-        export TAG="${BUILDKITE_COMMIT:0:7}"
-      fi
-      
-      export GOARCH="arm64"
-      
-      echo "--- System Info"
-      uname -a
-      docker version
-      
-      echo "--- Building with GOARCH=$GOARCH TAG=$TAG"
-      
-      # Build Order Service
-      echo "--- Building Order Service"
-      docker build \
+      ARCH="$(sed -n 's/^arch=//p' .bk-arch)"
+      TAG="$(sed -n 's/^tag=//p' .bk-tag)"
+      [ -n "$ARCH" ] || { echo "FATAL: .bk-arch missing"; exit 1; }
+      [ -n "$TAG" ]  || { echo "FATAL: .bk-tag missing"; exit 1; }
+      case "$ARCH" in
+        arm64)   PLATFORM="linux/arm64"; GOARCH="arm64" ;;
+        amd64|x86_64) PLATFORM="linux/amd64"; GOARCH="amd64" ;;
+        *) echo "Unknown arch '$ARCH'"; exit 1 ;;
+      esac
+
+      echo "--- Using PLATFORM=$PLATFORM GOARCH=$GOARCH TAG=$TAG"
+      docker buildx create --use --name bkx || docker buildx use bkx
+
+      echo "--- Build Order"
+      docker buildx build \
+        --platform "$PLATFORM" \
         --build-arg GOARCH="$GOARCH" \
-        -t hackermonk/order:${TAG} \
-        -t hackermonk/order:dev \
-        -f order/Dockerfile \
-        order/
-        
-      # Build Payment Service
-      echo "--- Building Payment Service"
-      docker build \
+        -t "hackermonk/order:${TAG:?missing_TAG}" \
+        -t "hackermonk/order:dev" \
+        -f order/Dockerfile order \
+        --load
+
+      echo "--- Build Payment"
+      docker buildx build \
+        --platform "$PLATFORM" \
         --build-arg GOARCH="$GOARCH" \
-        -t hackermonk/payment:${TAG} \
-        -t hackermonk/payment:dev \
-        -f payment/Dockerfile \
-        payment/
-        
-      echo "--- Built Images"
-      docker images | grep -E 'hackermonk/(order|payment)'
-      echo "--- Local images:"
+        -t "hackermonk/payment:${TAG:?missing_TAG}" \
+        -t "hackermonk/payment:dev" \
+        -f payment/Dockerfile payment \
+        --load
+
+      echo "--- Local images"
       docker images | grep -E 'hackermonk/(order|payment)'
 
   - label: ":minikube: Load images into cluster"
     command: |
       set -euo pipefail
-      
-      # Set the same tag as used in the build step
-      if [ -z "${BUILDKITE_COMMIT:-}" ]; then
-        # If running locally, get the latest tag
-        TAG=$(docker images --format '{{.Tag}}' hackermonk/order | head -n 1)
-      else
-        TAG="${BUILDKITE_COMMIT:0:7}"
-      fi
-      
+      TAG="$(sed -n 's/^tag=//p' .bk-tag)"
       echo "--- Loading images with tag: $TAG"
-      minikube image load --overwrite=true hackermonk/order:${TAG}
-      minikube image load --overwrite=true hackermonk/payment:${TAG}
+      minikube image load --overwrite=true "hackermonk/order:${TAG}"
+      minikube image load --overwrite=true "hackermonk/payment:${TAG}"
+      # Optional dev tags:
       minikube image load --overwrite=true hackermonk/order:dev
       minikube image load --overwrite=true hackermonk/payment:dev
-
-  - label: ":kubernetes: Create Namespaces"
-    command: |
-      set -euo pipefail
-      echo "--- Creating namespaces"
-      kubectl apply -f kubernetes/namespaces.yaml
-
-  - label: ":kubernetes: Deploy MySQL"
-    command: |
-      set -euo pipefail
-      echo "--- Deploying MySQL"
-      kubectl apply -f kubernetes/mysql-deployment.yaml
-      kubectl apply -f <(sed 's/namespace: mysql//g' kubernetes/services.yaml | grep -A 10 'name: mysql')
-
-  - label: ":kubernetes: Deploy Order Service"
-    command: |
-      set -euo pipefail
-      echo "--- Deploying Order Service"
-      kubectl apply -f kubernetes/order-deployment.yaml
-      kubectl apply -f <(sed -n '/name: order/,/---/p' kubernetes/services.yaml | grep -v '^---$' | sed 's/namespace: order//g')
-
-  - label: ":kubernetes: Deploy Payment Service"
-    command: |
-      set -euo pipefail
-      echo "--- Deploying Payment Service"
-      kubectl apply -f kubernetes/payment-deployment.yaml
-      kubectl apply -f <(sed -n '/name: payment/,/---/p' kubernetes/services.yaml | grep -v '^---$' | sed 's/namespace: payment//g')
-
-  - label: ":kubernetes: Deploy Ingress"
-    command: |
-      set -euo pipefail
-      echo "--- Deploying Ingress"
-      kubectl apply -f <(grep -A 100 'name: microservices-ingress' kubernetes/services.yaml)
 
   - label: ":kubernetes: Deploy (no registry)"
     command: |
       set -euo pipefail
-      TAG="${BUILDKITE_COMMIT:0:7}"
+      TAG="$(sed -n 's/^tag=//p' .bk-tag)"
       export ORDER_IMAGE="hackermonk/order:${TAG}"
       export PAYMENT_IMAGE="hackermonk/payment:${TAG}"
       echo "--- Using images:"
       echo "  $ORDER_IMAGE"
       echo "  $PAYMENT_IMAGE"
+
       if ! command -v envsubst >/dev/null 2>&1; then
         if command -v apt-get >/dev/null 2>&1; then
           sudo apt-get update && sudo apt-get install -y gettext-base
@@ -162,11 +142,13 @@ steps:
           echo "envsubst not available and no package manager found"; exit 1
         fi
       fi
+
       cd kubernetes
       for m in mysql-deployment.yaml order-deployment.yaml payment-deployment.yaml services.yaml; do
         [ -f "$m" ] || { echo "Missing $m"; exit 1; }
         envsubst < "$m" | kubectl apply -f -
       done
+
       echo "--- Rollout status"
       kubectl rollout status deploy/order --timeout=90s || true
       kubectl rollout status deploy/payment --timeout=90s || true
