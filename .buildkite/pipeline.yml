@@ -1,17 +1,3 @@
-# steps:
-#   - key: "setup"
-#     label: ":wrench: Setup"
-#     command: ".buildkite/steps/01_setup.sh"
-
-#   - label: ":package: Build images"
-#     depends_on: "setup"
-#     command: ".buildkite/steps/02_build.sh"
-
-#   - label: ":kubernetes: Deploy to Minikube"
-#     depends_on: "setup"
-#     command: ".buildkite/steps/03_deploy.sh"
-
-
 steps:
   - key: setup
     label: ":wrench: Setup"
@@ -24,7 +10,7 @@ steps:
 
   # -------- Pre-build gates --------
   - key: gitleaks
-    label: ":lock: Secrets (Gitleaks)"
+    label: ":lock: Secrets Scan (Gitleaks)"
     depends_on: setup
     command: ".buildkite/steps/04_secret_scanning.sh"
     artifact_paths:
@@ -32,7 +18,7 @@ steps:
     soft_fail: true  
 
   - key: semgrep
-    label: ":mag_right: SAST (Semgrep)"
+    label: ":mag_right: SAST Scan (Semgrep)"
     depends_on: setup
     command: ".buildkite/steps/05_sast.sh"
     artifact_paths:
@@ -40,7 +26,7 @@ steps:
     soft_fail: true  
 
   - key: sca
-    label: ":shield: SCA (govulncheck + Trivy fs)"
+    label: ":shield: SCA Scan (govulncheck + Trivy)"
     depends_on: setup
     command: ".buildkite/steps/06_sca.sh"
     soft_fail: true           # start soft; flip to hard-fail later
@@ -51,7 +37,7 @@ steps:
 
   # -------- Build --------
   - key: build
-    label: ":package: Build images"
+    label: ":package: Build Containers"
     depends_on:
       - setup
       - gitleaks
@@ -61,7 +47,7 @@ steps:
 
   # -------- Post-build security --------
   - key: trivy_img
-    label: ":microscope: Trivy image scan"
+    label: ":microscope: Container Scan (Trivy)"
     depends_on: build
     command: ".buildkite/steps/07_image_scanning.sh"
     soft_fail: true           # start soft; flip to hard-fail later
@@ -70,7 +56,7 @@ steps:
       - "artifacts/trivy-payment.sarif"
 
   - key: sbom
-    label: ":page_facing_up: SBOM + sign"
+    label: ":page_facing_up: SBOM + Image Signing (Syft + Cosign)"
     depends_on: build
     command: ".buildkite/steps/08_sbom_sign.sh"
     artifact_paths:
@@ -81,7 +67,7 @@ steps:
 
   # -------- Deploy --------
   - key: deploy
-    label: ":kubernetes: Deploy to Minikube"
+    label: ":kubernetes: Deploy to Minikube on MacOS"
     depends_on:
       - build
       - trivy_img
