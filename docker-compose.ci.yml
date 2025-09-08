@@ -8,6 +8,8 @@ services:
       MYSQL_PASSWORD: password
     ports:
       - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 5s
@@ -32,7 +34,7 @@ services:
       mysql:
         condition: service_healthy
     volumes:
-      - ./order:/app
+      - order-app:/app
 
   payment:
     build:
@@ -53,4 +55,9 @@ services:
       mysql:
         condition: service_healthy
     volumes:
-      - ./payment:/app
+      - payment-app:/app
+
+volumes:
+  mysql-data:
+  order-app:
+  payment-app:
