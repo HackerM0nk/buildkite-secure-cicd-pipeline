@@ -3,44 +3,30 @@ kind: Deployment
 metadata:
   name: order
   namespace: order
-  labels:
-    app: order
+  labels: { app: order }
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      app: order
+  selector: { matchLabels: { app: order } }
   template:
-    metadata:
-      labels:
-        app: order
+    metadata: { labels: { app: order } }
     spec:
       containers:
         - name: order
-          image: ${ORDER_IMAGE}
+          image: ${ORDER_IMAGE}             # injected by envsubst
           imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8080
+          ports: [{ containerPort: 8080 }]
           env:
-            - name: DB_HOST
-              value: mysql.mysql.svc.cluster.local
-            - name: DB_PORT
-              value: "3306"
-            - name: DB_USER
-              value: user
-            - name: DB_PASSWORD
-              value: password
-            - name: DB_NAME
-              value: orders
+            - { name: DB_HOST, value: mysql.mysql.svc.cluster.local }
+            - { name: DB_PORT, value: "3306" }
+            - { name: DB_USER, value: user }
+            - { name: DB_PASSWORD, value: password }
+            - { name: DB_NAME, value: orders }
+            - { name: PAYMENT_GRPC_ADDR, value: "payment.payment.svc.cluster.local:8081" }
           livenessProbe:
-            httpGet:
-              path: /health
-              port: 8080
+            httpGet: { path: /health, port: 8080 }
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
-            httpGet:
-              path: /health
-              port: 8080
+            httpGet: { path: /health, port: 8080 }
             initialDelaySeconds: 5
             periodSeconds: 5

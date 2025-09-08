@@ -10,8 +10,3 @@ steps:
   - label: ":kubernetes: Deploy to Minikube"
     depends_on: "setup"
     command: ".buildkite/steps/03_deploy.sh"
-
-  # Later (optional):
-  # - label: ":shield: Security scans"
-  #   depends_on: "setup"
-  #   command: ".buildkite/steps/04_security.sh"

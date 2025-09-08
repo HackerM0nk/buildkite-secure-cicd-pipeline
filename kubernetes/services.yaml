@@ -1,86 +1,38 @@
-# mysql headless (unchanged)
 apiVersion: v1
 kind: Service
 metadata:
   name: mysql
   namespace: mysql
-  labels:
-    app: mysql
+  labels: { app: mysql }
 spec:
+  type: ClusterIP
   ports:
     - port: 3306
-  selector:
-    app: mysql
-  clusterIP: None
+      targetPort: 3306
+  selector: { app: mysql }
 ---
-# order service (unchanged)
 apiVersion: v1
 kind: Service
 metadata:
   name: order
   namespace: order
-  labels:
-    app: order
+  labels: { app: order }
 spec:
   type: ClusterIP
   ports:
     - port: 80
       targetPort: 8080
-  selector:
-    app: order
+  selector: { app: order }
 ---
-# payment service (unchanged)
 apiVersion: v1
 kind: Service
 metadata:
   name: payment
   namespace: payment
-  labels:
-    app: payment
+  labels: { app: payment }
 spec:
   type: ClusterIP
   ports:
     - port: 80
       targetPort: 8081
-  selector:
-    app: payment
----
-# Ingress for ORDER (must live in the same namespace as the backend Service)
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: order-ingress
-  namespace: order
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  rules:
-    - http:
-        paths:
-          - path: /order
-            pathType: Prefix
-            backend:
-              service:
-                name: order
-                port:
-                  number: 80
----
-# Ingress for PAYMENT (lives in payment namespace)
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: payment-ingress
-  namespace: payment
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  rules:
-    - http:
-        paths:
-          - path: /payment
-            pathType: Prefix
-            backend:
-              service:
-                name: payment
-                port:
-                  number: 80
+  selector: { app: payment }

@@ -1,0 +1,5 @@
+.git
+**/test-results
+**/bin
+**/*.swp
+**/*.tmp

@@ -1,59 +1,58 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-init
+  namespace: mysql
+data:
+  init.sql: |
+    CREATE DATABASE IF NOT EXISTS orders;
+    CREATE DATABASE IF NOT EXISTS payments;
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mysql
   namespace: mysql
-  labels:
-    app: mysql
+  labels: { app: mysql }
 spec:
-  selector:
-    matchLabels:
-      app: mysql
-  strategy:
-    type: Recreate
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: mysql } }
   template:
-    metadata:
-      labels:
-        app: mysql
+    metadata: { labels: { app: mysql } }
     spec:
       containers:
-        - image: mysql:8.0
-          name: mysql
+        - name: mysql
+          image: mysql:8.0
+          args: ["--default-authentication-plugin=mysql_native_password"]
           env:
-            - name: MYSQL_ROOT_PASSWORD
-              value: password
-            - name: MYSQL_DATABASE
-              value: orders
-            - name: MYSQL_USER
-              value: user
-            - name: MYSQL_PASSWORD
-              value: password
-          ports:
-            - containerPort: 3306
-              name: mysql
+            - { name: MYSQL_ROOT_PASSWORD, value: password }
+            - { name: MYSQL_USER,          value: user }
+            - { name: MYSQL_PASSWORD,      value: password }
+            # MYSQL_DATABASE only matters on first init; init.sql creates both DBs anyway
+            - { name: MYSQL_DATABASE,      value: orders }
+          ports: [{ name: mysql, containerPort: 3306 }]
           readinessProbe:
             exec:
-              command: ["sh", "-c", "mysqladmin ping -h 127.0.0.1 -uroot -ppassword --silent"]
+              command: ["sh","-c","mysqladmin ping -h 127.0.0.1 -uroot -ppassword --silent"]
             initialDelaySeconds: 10
             periodSeconds: 5
           volumeMounts:
-            - name: mysql-persistent-storage
-              mountPath: /var/lib/mysql
+            - { name: data, mountPath: /var/lib/mysql }
+            - { name: init, mountPath: /docker-entrypoint-initdb.d } # runs on first init
       volumes:
-        - name: mysql-persistent-storage
+        - name: data
           persistentVolumeClaim:
             claimName: mysql-pv-claim
+        - name: init
+          configMap:
+            name: mysql-init
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: mysql-pv-claim
   namespace: mysql
-  labels:
-    app: mysql
+  labels: { app: mysql }
 spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
+  accessModes: [ ReadWriteOnce ]
+  resources: { requests: { storage: 1Gi } }
