@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TAG="$(sed -n 's/^tag=//p' "$PWD/.bk-tag")"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+TAG="$(sed -n 's/^tag=//p' "$REPO_ROOT/.bk-tag")"
 [ -n "$TAG" ] || { echo "FATAL: .bk-tag missing"; exit 1; }
 
 echo "--- Loading images with tag: $TAG"

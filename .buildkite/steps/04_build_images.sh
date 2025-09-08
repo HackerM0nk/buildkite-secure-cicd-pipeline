@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ARCH="$(sed -n 's/^arch=//p' "$PWD/.bk-arch")"
-TAG="$(sed -n 's/^tag=//p' "$PWD/.bk-tag")"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+ARCH="$(sed -n 's/^arch=//p' "$REPO_ROOT/.bk-arch")"
+TAG="$(sed -n 's/^tag=//p' "$REPO_ROOT/.bk-tag")"
 [ -n "$ARCH" ] || { echo "FATAL: .bk-arch missing"; exit 1; }
 [ -n "$TAG" ]  || { echo "FATAL: .bk-tag missing"; exit 1; }
 

@@ -10,9 +10,9 @@ kubectl config current-context || true
 
 echo "--- Decide architecture"
 # Hardcode for M3 (arm64); switch to detection later if you prefer
-mkdir -p "$(pwd)"
-echo "arch=arm64" > "$(pwd)/.bk-arch"
-cat "$(pwd)/.bk-arch"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+echo "arch=arm64" > "$REPO_ROOT/.bk-arch"
+cat "$REPO_ROOT/.bk-arch"
 
 echo "--- Decide tag"
 TAG=""
@@ -27,5 +27,5 @@ fi
 # sanitize and validate
 TAG="$(printf %s "$TAG" | tr -c 'A-Za-z0-9_.-' '-')"
 [ -n "$TAG" ] || { echo "FATAL: computed TAG is empty"; exit 1; }
-echo "tag=$TAG" > .bk-tag
+echo "tag=$TAG" > "$REPO_ROOT/.bk-tag"
 echo "Using TAG=$TAG"
