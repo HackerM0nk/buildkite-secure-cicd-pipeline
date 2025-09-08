@@ -19,7 +19,7 @@ services:
     environment:
       APPLICATION_PORT: 8080
       ENV: "development"
-      DATA_SOURCE_URL: "root:s3cr3t@tcp(mysql:3306)/orders?charset=utf8mb4&parseTime=True&loc=Local"
+      DATA_SOURCE_URL: "root:s3cr3t@tcp(mysql:3306)/order?charset=utf8mb4&parseTime=True&loc=Local"
       PAYMENT_SERVICE_URL: "payment:8081"
   mysql:
     image: "mysql:8.0.30"

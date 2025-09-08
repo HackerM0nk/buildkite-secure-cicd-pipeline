@@ -5,7 +5,7 @@ metadata:
   namespace: mysql
 data:
   init.sql: |
-    CREATE DATABASE IF NOT EXISTS orders;
+    CREATE DATABASE IF NOT EXISTS order;
     CREATE DATABASE IF NOT EXISTS payment;
 ---
 apiVersion: apps/v1
@@ -29,7 +29,7 @@ spec:
             - { name: MYSQL_USER,          value: user }
             - { name: MYSQL_PASSWORD,      value: password }
             # MYSQL_DATABASE only matters on first init; init.sql creates both DBs anyway
-            - { name: MYSQL_DATABASE,      value: orders }
+            - { name: MYSQL_DATABASE,      value: order }
           ports: [{ name: mysql, containerPort: 3306 }]
           readinessProbe:
             exec:

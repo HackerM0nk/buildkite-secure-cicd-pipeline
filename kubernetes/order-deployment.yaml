@@ -27,7 +27,7 @@ spec:
             - name: APPLICATION_PORT
               value: "8080"
             - name: DATA_SOURCE_URL
-              value: "user:password@tcp(mysql.mysql.svc.cluster.local:3306)/orders?charset=utf8mb4&parseTime=True&loc=Local"
+              value: "user:password@tcp(mysql.mysql.svc.cluster.local:3306)/order?charset=utf8mb4&parseTime=True&loc=Local"
             - name: PAYMENT_SERVICE_URL
               value: "payment.payment.svc.cluster.local:8081"
           livenessProbe:
