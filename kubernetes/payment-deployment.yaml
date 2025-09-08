@@ -16,7 +16,7 @@ spec:
           imagePullPolicy: IfNotPresent
           ports: [{ containerPort: 8081 }]
           env:
-            - { name: ENV,               value: "production" }
+            - { name: ENV,               value: "development" }
             - { name: APPLICATION_PORT,  value: "8081" }
             - { name: DATA_SOURCE_URL,   value: "user:password@tcp(mysql.mysql.svc.cluster.local:3306)/payment?charset=utf8mb4&parseTime=True&loc=Local" }
           readinessProbe:

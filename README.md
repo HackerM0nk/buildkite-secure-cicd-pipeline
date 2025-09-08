@@ -140,11 +140,11 @@ The Buildkite pipeline includes:
 4. **Manual Approval**:
    - Requires manual approval for production deployment
 
-5. **Deploy to Production**:
-   - Deploys to production Kubernetes cluster
+5. **Deploy to Development**:
+   - Deploys to Local MacOS based Kubernetes cluster
 
 # How to Run
 You can run project with following command
 ```bash
 skaffold dev
-
+```
