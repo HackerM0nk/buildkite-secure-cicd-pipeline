@@ -16,7 +16,7 @@ Images are built with short, reproducible commit tags, loaded directly into Mini
 All scans and SBOMs are uploaded as artifacts for auditability.
 
 ---
-![Uploading image.png…]()
+![Description of the image](/images/image.png)
 
 
 ## Architecture (at a glance)
