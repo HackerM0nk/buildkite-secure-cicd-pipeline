@@ -7,11 +7,12 @@
 
 ## What this is
 
-Two Go services — **order** (HTTP REST + gRPC gateway) and **payment** (gRPC) — talk to **MySQL**.  
+Two Go services — **order** (HTTP REST + gRPC gateway) and **payment** (gRPC) — talk to database **MySQL**.  
 Everything is **containerized and continuously deployed** to **Minikube** across three namespaces (`order`, `payment`, `mysql`) on every Buildkite run.
 
 The pipeline is **security-first** and **end-to-end**:
 **secret scanning → SAST → SCA → build → image scan → SBOM & cryptographic signing → deploy** — all **without any external registry**.  
+
 Images are built with short, reproducible commit tags, loaded directly into Minikube, manifests are templated via `envsubst`, and the result is live pods you can verify with `kubectl` in minutes.  
 All scans and SBOMs are uploaded as artifacts for auditability.
 
