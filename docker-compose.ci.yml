@@ -17,6 +17,9 @@ services:
     build:
       context: ./order
       dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+        - GOARCH=${ARCH:-arm64}
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
@@ -36,6 +39,9 @@ services:
     build:
       context: ./payment
       dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+        - GOARCH=${ARCH:-arm64}
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
