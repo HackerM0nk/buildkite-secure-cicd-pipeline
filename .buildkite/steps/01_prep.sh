@@ -10,8 +10,9 @@ kubectl config current-context || true
 
 echo "--- Decide architecture"
 # Hardcode for M3 (arm64); switch to detection later if you prefer
-echo "arch=arm64" > .bk-arch
-cat .bk-arch
+mkdir -p "$(pwd)"
+echo "arch=arm64" > "$(pwd)/.bk-arch"
+cat "$(pwd)/.bk-arch"
 
 echo "--- Decide tag"
 TAG=""

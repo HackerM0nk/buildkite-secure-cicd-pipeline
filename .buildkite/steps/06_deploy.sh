@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TAG="$(sed -n 's/^tag=//p' .bk-tag)"
+TAG="$(sed -n 's/^tag=//p' "$PWD/.bk-tag")"
 [ -n "$TAG" ] || { echo "FATAL: .bk-tag missing"; exit 1; }
 
 export ORDER_IMAGE="hackermonk/order:$TAG"
