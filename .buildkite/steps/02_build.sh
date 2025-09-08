@@ -1,25 +1,30 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail  # note: no -u until TAG is set
 
-buildkite-agent artifact download build.env . >/dev/null 2>&1 || true
-[ -f build.env ] && set -a && . build.env && set +a
-
-: "${PLATFORM:=linux/arm64}"
-if [ -z "${TAG:-}" ]; then
-  if [ -n "${BUILDKITE_COMMIT:-}" ]; then TAG="$(printf %s "$BUILDKITE_COMMIT" | cut -c1-7)"; else TAG="local-$(date +%s)"; fi
-  TAG="$(printf %s "$TAG" | tr -c 'A-Za-z0-9_.-' '-')"
+# --- Derive TAG deterministically in THIS step
+if [ -n "${BUILDKITE_COMMIT:-}" ]; then
+  TAG="$(printf %s "$BUILDKITE_COMMIT" | cut -c1-7)"
+elif git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  TAG="$(git rev-parse --short HEAD)"
+else
+  TAG="local-$(date +%s)"
 fi
+export TAG
 
-ORDER_IMAGE="hackermonk/order:$TAG"
-PAYMENT_IMAGE="hackermonk/payment:$TAG"
-
+ARCH="arm64"
+PLATFORM="linux/arm64"
 echo "Building images"
-echo "ORDER_IMAGE:   $ORDER_IMAGE"
-echo "PAYMENT_IMAGE: $PAYMENT_IMAGE"
-echo "PLATFORM:      $PLATFORM"
+echo "TAG=$TAG  PLATFORM=$PLATFORM"
 
-export DOCKER_BUILDKIT=1
-docker build --platform "$PLATFORM" -t "$ORDER_IMAGE"   -f order/Dockerfile   order
-docker build --platform "$PLATFORM" -t "$PAYMENT_IMAGE" -f payment/Dockerfile payment
+# build order
+docker buildx create --use --name bkx || docker buildx use bkx
+docker buildx build \
+  --platform "$PLATFORM" \
+  -t "hackermonk/order:$TAG" \
+  -f order/Dockerfile order --load
 
-docker images | grep -E 'hackermonk/(order|payment)' || true
+# build payment
+docker buildx build \
+  --platform "$PLATFORM" \
+  -t "hackermonk/payment:$TAG" \
+  -f payment/Dockerfile payment --load
