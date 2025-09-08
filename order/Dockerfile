@@ -1,35 +1,34 @@
-# Build arguments
-ARG TAG=latest
-ARG GOARCH=amd64
+# syntax=docker/dockerfile:1.6
 
-# Build stage
-FROM --platform=linux/${GOARCH} golang:1.19-alpine AS builder
-RUN apk add --no-cache git
-WORKDIR /usr/src/app
+ARG GO_VERSION=1.22
+ARG ALPINE_VERSION=3.19
 
-# Download dependencies first (better layer caching)
+# Build stage runs on the build platform; we’ll output for TARGET{OS,ARCH}
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS builder
+WORKDIR /src
+
+# Tooling that some modules expect
+RUN apk add --no-cache git ca-certificates && update-ca-certificates
+
+# Module setup and caching
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source and build
+# Copy the rest
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} \
-    go build -ldflags='-w -s' -o order ./cmd/main.go
 
-# Final stage
-FROM --platform=linux/${GOARCH} golang:1.19-alpine
+# Build a static binary for the target platform
+ARG TARGETOS TARGETARCH
+ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
+RUN go build -trimpath -ldflags="-s -w" -o /out/app ./cmd
+
+# Minimal runtime: no shell, no apk, fewer arch pitfalls
+FROM gcr.io/distroless/static:nonroot AS runtime
 WORKDIR /app
+COPY --from=builder /out/app /app/app
 
-# Install necessary tools for testing
-RUN apk add --no-cache ca-certificates git
+# Ports are informative; K8s will map via Service
+EXPOSE 8080
 
-# Copy only the binary and necessary files
-COPY --from=builder /usr/src/app/order /app/
-
-# For testing
-COPY --from=builder /usr/src/app/go.mod /app/
-COPY --from=builder /usr/src/app/go.sum /app/
-COPY --from=builder /usr/src/app/internal /app/internal
-
-# Default command
-CMD ["/app/order"]
+USER 65532:65532
+ENTRYPOINT ["/app/app"]
