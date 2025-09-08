@@ -3,29 +3,42 @@ kind: Deployment
 metadata:
   name: order
   namespace: order
+  labels:
+    app: order
 spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order
   template:
+    metadata:
+      labels:
+        app: order
     spec:
       containers:
-      - name: order
-        image: ${ORDER_IMAGE}
-        imagePullPolicy: IfNotPresent
-        ports: [{ containerPort: 8080 }]
-        env:
-        - name: DATA_SOURCE_URL
-          # NOTE: K8s creds and K8s DNS here (user/password, NOT root/s3cr3t)
-          value: "user:password@tcp(mysql.mysql.svc.cluster.local:3306)/orders?charset=utf8mb4&parseTime=True&loc=Local"
-        - name: PAYMENT_GRPC_ADDR
-          value: "payment.payment.svc.cluster.local:8081"
-        - name: PAYMENT_SERVICE_URL        # set both to be robust
-          value: "payment.payment.svc.cluster.local:8081"
-        - name: PORT
-          value: "8080"
-        livenessProbe:
-          httpGet: { path: /health, port: 8080 }
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet: { path: /health, port: 8080 }
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: order
+          image: ${ORDER_IMAGE}            # replaced by envsubst
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DATA_SOURCE_URL
+              value: "user:password@tcp(mysql.mysql.svc.cluster.local:3306)/orders?charset=utf8mb4&parseTime=True&loc=Local"
+            - name: PAYMENT_GRPC_ADDR
+              value: "payment.payment.svc.cluster.local:8081"
+            - name: PAYMENT_SERVICE_URL
+              value: "payment.payment.svc.cluster.local:8081"
+            - name: PORT
+              value: "8080"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
