@@ -17,26 +17,22 @@ spec:
     spec:
       containers:
         - name: payment
-          image: ${PAYMENT_IMAGE}          # replaced by envsubst
+          image: ${PAYMENT_IMAGE}
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8081
           env:
+            - name: ENV
+              value: "production"
+            - name: APPLICATION_PORT
+              value: "8081"
             - name: DATA_SOURCE_URL
               value: "user:password@tcp(mysql.mysql.svc.cluster.local:3306)/payments?charset=utf8mb4&parseTime=True&loc=Local"
-            - name: PORT
-              value: "8081"
-            - name: GRPC_PORT
-              value: "8081"
           livenessProbe:
-            httpGet:
-              path: /health
-              port: 8081
+            httpGet: { path: /health, port: 8081 }
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
-            httpGet:
-              path: /health
-              port: 8081
+            httpGet: { path: /health, port: 8081 }
             initialDelaySeconds: 5
             periodSeconds: 5
