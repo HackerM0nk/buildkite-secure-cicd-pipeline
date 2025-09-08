@@ -12,7 +12,8 @@ export DOCKER_BUILDKIT=1
 
 # Build services using docker-compose
 echo "--- Building services with docker-compose"
-docker-compose -f docker-compose.ci.yml build --build-arg TAG=$TAG
+# Using docker compose v2 format (without the hyphen) which is the recommended way
+docker compose -f docker-compose.ci.yml build
 
 # Show disk usage
 echo "--- Docker disk usage"

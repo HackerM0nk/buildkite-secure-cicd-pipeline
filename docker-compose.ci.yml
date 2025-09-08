@@ -18,8 +18,8 @@ services:
       context: ./order
       dockerfile: Dockerfile
       args:
-        TAG: $TAG
-        GOARCH: arm64  # Simplified since we're only building for arm64
+        - TAG=${TAG:-latest}
+        - GOARCH=arm64  # Simplified since we're only building for arm64
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
@@ -39,8 +39,8 @@ services:
       context: ./payment
       dockerfile: Dockerfile
       args:
-        TAG: $TAG
-        GOARCH: arm64  # Simplified since we're only building for arm64
+        - TAG=${TAG:-latest}
+        - GOARCH=arm64  # Simplified since we're only building for arm64
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
