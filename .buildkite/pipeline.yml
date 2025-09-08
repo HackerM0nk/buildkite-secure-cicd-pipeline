@@ -54,7 +54,14 @@ steps:
   - label: ":package: Build k8s images for Minikube"
     command: |
       set -euo pipefail
-      export TAG="${BUILDKITE_COMMIT:0:7}"
+      
+      # Set default tag if not in Buildkite
+      if [ -z "${BUILDKITE_COMMIT:-}" ]; then
+        export TAG="local-$(date +%s)"
+      else
+        export TAG="${BUILDKITE_COMMIT:0:7}"
+      fi
+      
       export GOARCH="arm64"
       
       echo "--- System Info"
@@ -70,7 +77,7 @@ steps:
         -t hackermonk/order:${TAG} \
         -t hackermonk/order:dev \
         -f order/Dockerfile \
-        .
+        order/
         
       # Build Payment Service
       echo "--- Building Payment Service"
@@ -79,7 +86,7 @@ steps:
         -t hackermonk/payment:${TAG} \
         -t hackermonk/payment:dev \
         -f payment/Dockerfile \
-        .
+        payment/
         
       echo "--- Built Images"
       docker images | grep -E 'hackermonk/(order|payment)'
@@ -89,7 +96,16 @@ steps:
   - label: ":minikube: Load images into cluster"
     command: |
       set -euo pipefail
-      TAG="${BUILDKITE_COMMIT:0:7}"
+      
+      # Set the same tag as used in the build step
+      if [ -z "${BUILDKITE_COMMIT:-}" ]; then
+        # If running locally, get the latest tag
+        TAG=$(docker images --format '{{.Tag}}' hackermonk/order | head -n 1)
+      else
+        TAG="${BUILDKITE_COMMIT:0:7}"
+      fi
+      
+      echo "--- Loading images with tag: $TAG"
       minikube image load --overwrite=true hackermonk/order:${TAG}
       minikube image load --overwrite=true hackermonk/payment:${TAG}
       minikube image load --overwrite=true hackermonk/order:dev
