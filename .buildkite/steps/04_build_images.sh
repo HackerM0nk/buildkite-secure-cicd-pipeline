@@ -1,59 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Load build environment from artifact
-if [ -f build.env ]; then
-  echo "--- Loading build environment"
-  set -a
-  source build.env
-  set +a
-fi
+[ -f build.env ] && set -a && . build.env && set +a
+[ -n "${TAG:-}" ] || { echo "Missing TAG"; exit 1; }
 
-# Verify required variables are set
-if [ -z "${TAG:-}" ]; then
-  echo "--- Error: TAG environment variable is not set"
-  echo "Current environment variables:"
-  env | sort
-  exit 1
-fi
-
-# Set architecture (hardcoded for M3 Mac)
-ARCH="arm64"
-PLATFORM="linux/arm64"
-GOARCH="arm64"
-
-# Set image names
 ORDER_IMAGE="hackermonk/order:$TAG"
 PAYMENT_IMAGE="hackermonk/payment:$TAG"
 
-echo "--- Build Environment"
-echo "Current directory: $(pwd)"
-echo "Using TAG: $TAG"
-echo "Using ARCH: $ARCH ($PLATFORM)"
+echo "--- minikube image load"
+minikube image load --overwrite=true "$ORDER_IMAGE"
+minikube image load --overwrite=true "$PAYMENT_IMAGE"
 
-# Build order service
-echo "--- Building order service"
-cd order
-DOCKER_BUILDKIT=1 docker build \
-  --platform $PLATFORM \
-  -t "$ORDER_IMAGE" \
-  --build-arg BUILDKIT_INLINE_CACHE=1 \
-  --build-arg GOARCH=$GOARCH \
-  .
+echo "--- Deploy manifests (envsubst)"
+export ORDER_IMAGE PAYMENT_IMAGE
 
-# Build payment service
-echo "--- Building payment service"
-cd ../payment
-DOCKER_BUILDKIT=1 docker build \
-  --platform $PLATFORM \
-  -t "$PAYMENT_IMAGE" \
-  --build-arg BUILDKIT_INLINE_CACHE=1 \
-  --build-arg GOARCH=$GOARCH \
-  .
+if ! command -v envsubst >/dev/null 2>&1; then
+  if command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update && sudo apt-get install -y gettext-base
+  elif command -v brew >/dev/null 2>&1; then
+    brew install gettext || true
+    brew link --force gettext || true
+  else
+    echo "envsubst not available and no package manager found"; exit 1
+  fi
+fi
 
-# List built images
-echo "--- Built images"
-docker images | grep -E 'hackermonk/(order|payment)' || true
+cd kubernetes
+for m in mysql-deployment.yaml order-deployment.yaml payment-deployment.yaml services.yaml; do
+  [ -f "$m" ] || { echo "Missing $m"; exit 1; }
+  echo "--- Applying $m"
+  envsubst < "$m" | kubectl apply -f -
+done
 
-echo "--- Local images"
-docker images | grep -E 'hackermonk/(order|payment)' || true
+echo "--- Rollout status"
+kubectl rollout status deploy/order --timeout=90s || true
+kubectl rollout status deploy/payment --timeout=90s || true
+kubectl get pods -o wide

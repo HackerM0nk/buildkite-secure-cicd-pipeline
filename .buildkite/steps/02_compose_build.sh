@@ -1,24 +1,33 @@
 #!/usr/bin/env bash
-set -euxo pipefail
+set -euo pipefail
 
-echo "--- Build Environment"
-echo "Build number: $BUILDKITE_BUILD_NUMBER"
-echo "Commit: $BUILDKITE_COMMIT"
-echo "Tag: $TAG"
-echo "Architecture: $ARCH"
+# Load env
+[ -f build.env ] && set -a && . build.env && set +a
+[ -n "${TAG:-}" ] && [ -n "${PLATFORM:-}" ] || { echo "Missing TAG/PLATFORM"; exit 1; }
 
-# Enable BuildKit
+ORDER_IMAGE="hackermonk/order:$TAG"
+PAYMENT_IMAGE="hackermonk/payment:$TAG"
+
+echo "--- Build images"
+echo "  ORDER_IMAGE:   $ORDER_IMAGE"
+echo "  PAYMENT_IMAGE: $PAYMENT_IMAGE"
+echo "  PLATFORM:      $PLATFORM"
+
 export DOCKER_BUILDKIT=1
 
-# Build services using docker-compose
-echo "--- Building services with docker-compose"
-# Using docker compose v2 format (without the hyphen) which is the recommended way
-docker compose -f docker-compose.ci.yml build
+# Order
+docker build \
+  --platform "$PLATFORM" \
+  --build-arg GOARCH="${ARCH:-arm64}" \
+  -t "$ORDER_IMAGE" \
+  -f order/Dockerfile order
 
-# Show disk usage
-echo "--- Docker disk usage"
-docker system df -v || true
+# Payment
+docker build \
+  --platform "$PLATFORM" \
+  --build-arg GOARCH="${ARCH:-arm64}" \
+  -t "$PAYMENT_IMAGE" \
+  -f payment/Dockerfile payment
 
-# List built images
-echo "--- Built images"
-docker images | grep -E 'order|payment' || true
+echo "--- Local images"
+docker images | grep -E 'hackermonk/(order|payment)' || true
