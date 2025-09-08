@@ -1,12 +1,80 @@
+# steps:
+#   - key: "setup"
+#     label: ":wrench: Setup"
+#     command: ".buildkite/steps/01_setup.sh"
+
+#   - label: ":package: Build images"
+#     depends_on: "setup"
+#     command: ".buildkite/steps/02_build.sh"
+
+#   - label: ":kubernetes: Deploy to Minikube"
+#     depends_on: "setup"
+#     command: ".buildkite/steps/03_deploy.sh"
+
+
 steps:
-  - key: "setup"
+  - key: setup
     label: ":wrench: Setup"
     command: ".buildkite/steps/01_setup.sh"
 
-  - label: ":package: Build images"
-    depends_on: "setup"
-    command: ".buildkite/steps/02_build.sh"
+  # -------- Pre-build gates --------
+  - key: gitleaks
+    label: ":lock: Secrets (Gitleaks)"
+    depends_on: setup
+    command: ".buildkite/steps/04_secret_scanning.sh"
+    artifact_paths:
+      - "artifacts/gitleaks.sarif"
 
-  - label: ":kubernetes: Deploy to Minikube"
-    depends_on: "setup"
-    command: ".buildkite/steps/03_deploy.sh"
+  # - key: semgrep
+  #   label: ":mag_right: SAST (Semgrep)"
+  #   depends_on: setup
+  #   command: ".buildkite/steps/05_sast.sh"
+  #   artifact_paths:
+  #     - "artifacts/semgrep.json"
+
+  # - key: sca
+  #   label: ":shield: SCA (govulncheck + Trivy fs)"
+  #   depends_on: setup
+  #   command: ".buildkite/steps/06_sca.sh"
+  #   soft_fail: true           # start soft; flip to hard-fail later
+  #   artifact_paths:
+  #     - "artifacts/govulncheck.txt"
+  #     - "artifacts/trivy-fs.sarif"
+
+  # # -------- Build --------
+  # - key: build
+  #   label: ":package: Build images"
+  #   depends_on:
+  #     - setup
+  #     - gitleaks
+  #     - semgrep
+  #     - sca
+  #   command: ".buildkite/steps/02_build.sh"
+
+  # # -------- Post-build security --------
+  # - key: trivy_img
+  #   label: ":microscope: Trivy image scan"
+  #   depends_on: build
+  #   command: ".buildkite/steps/07_image_scanning.sh"
+  #   soft_fail: true           # start soft; flip to hard-fail later
+  #   artifact_paths:
+  #     - "artifacts/trivy-order.sarif"
+  #     - "artifacts/trivy-payment.sarif"
+
+  # - key: sbom
+  #   label: ":page_facing_up: SBOM + sign"
+  #   depends_on: build
+  #   command: ".buildkite/steps/08_sbom_sign.sh"
+  #   artifact_paths:
+  #     - "artifacts/sbom-*.spdx.json"
+  #     - "artifacts/sbom-*.sig"
+  #     - "artifacts/cosign.*"
+
+  # # -------- Deploy --------
+  # - key: deploy
+  #   label: ":kubernetes: Deploy to Minikube"
+  #   depends_on:
+  #     - build
+  #     - trivy_img
+  #     - sbom
+  #   command: ".buildkite/steps/03_deploy.sh"

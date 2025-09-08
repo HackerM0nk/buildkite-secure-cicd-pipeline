@@ -25,3 +25,8 @@ minikube version || true
 kubectl config current-context || true
 
 buildkite-agent artifact upload build.env
+
+# Choose a short, safe tag and export it for subsequent steps
+TAG="$(printf %s "${BUILDKITE_COMMIT:-local-$(date +%s)}" | cut -c1-7)"
+echo "TAG=$TAG" >> "$BUILDKITE_ENV_FILE"
+echo "Using TAG=$TAG"
