@@ -1,35 +1,20 @@
-# Build arguments
-ARG TAG=latest
-ARG GOARCH=amd64
+# syntax=docker/dockerfile:1.6
+ARG GO_VERSION=1.22
+ARG ALPINE_VERSION=3.19
 
-# Build stage
-FROM --platform=linux/${GOARCH} golang:1.19-alpine AS builder
-RUN apk add --no-cache git
-WORKDIR /usr/src/app
-
-# Download dependencies first (better layer caching)
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS builder
+WORKDIR /src
+RUN apk add --no-cache git ca-certificates && update-ca-certificates
 COPY go.mod go.sum ./
 RUN go mod download
-
-# Copy source and build
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} \
-    go build -ldflags='-w -s' -o order ./cmd/main.go
+ARG TARGETOS TARGETARCH
+ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
+RUN go build -trimpath -ldflags="-s -w" -o /out/app ./cmd
 
-# Final stage
-FROM --platform=linux/${GOARCH} golang:1.19-alpine
+FROM gcr.io/distroless/static:nonroot
 WORKDIR /app
-
-# Install necessary tools for testing
-RUN apk add --no-cache ca-certificates git
-
-# Copy only the binary and necessary files
-COPY --from=builder /usr/src/app/order /app/
-
-# For testing
-COPY --from=builder /usr/src/app/go.mod /app/
-COPY --from=builder /usr/src/app/go.sum /app/
-COPY --from=builder /usr/src/app/internal /app/internal
-
-# Default command
-CMD ["/app/order"]
+COPY --from=builder /out/app /app/app
+EXPOSE 8080
+USER 65532:65532
+ENTRYPOINT ["/app/app"]

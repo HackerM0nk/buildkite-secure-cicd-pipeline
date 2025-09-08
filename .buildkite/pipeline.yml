@@ -1,33 +1,12 @@
-env:
-  GO111MODULE: "on"
-  GOFLAGS: "-mod=mod"
-  CGO_ENABLED: "0"
-  TAG: ${BUILDKITE_COMMIT:0:7}
-  ARCH: "linux/arm64"
-
 steps:
-  - label: ":wrench: Setup Environment"
-    command: |
-      echo "--- Setting up build environment"
-      echo "Build number: $BUILDKITE_BUILD_NUMBER"
-      echo "Commit: $BUILDKITE_COMMIT"
-      echo "Tag: $TAG"
-      echo "Architecture: $ARCH"
+  - key: "setup"
+    label: ":wrench: Setup"
+    command: ".buildkite/steps/01_setup.sh"
 
-  - label: ":docker: Build and Test"
-    command: .buildkite/steps/02_compose_build.sh
-
-  - label: ":go: Test Services"
-    command: |
-      echo "--- Running tests"
-      docker-compose -f docker-compose.ci.yml up --exit-code-from order
-      docker-compose -f docker-compose.ci.yml up --exit-code-from payment
-
-  - label: ":package: Build k8s images for Minikube"
-    command: .buildkite/steps/04_build_images.sh
+  - label: ":package: Build images"
+    depends_on: "setup"
+    command: ".buildkite/steps/02_build.sh"
 
   - label: ":kubernetes: Deploy to Minikube"
-    command: .buildkite/steps/05_deploy_minikube.sh
-
-  - label: ":kubernetes: Deploy (no registry)"
-    command: .buildkite/steps/06_deploy.sh
+    depends_on: "setup"
+    command: ".buildkite/steps/03_deploy.sh"

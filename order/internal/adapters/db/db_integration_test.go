@@ -22,14 +22,14 @@ func (o *OrderDatabaseTestSuite) SetupSuite() {
 	ctx := context.Background()
 	port := "3306/tcp"
 	dbURL := func(port nat.Port) string {
-		return fmt.Sprintf("root:s3cr3t@tcp(localhost:%s)/orders?charset=utf8mb4&parseTime=True&loc=Local", port.Port())
+		return fmt.Sprintf("root:s3cr3t@tcp(localhost:%s)/order?charset=utf8mb4&parseTime=True&loc=Local", port.Port())
 	}
 	req := testcontainers.ContainerRequest{
 		Image:        "docker.io/mysql:8.0.30",
 		ExposedPorts: []string{port},
 		Env: map[string]string{
 			"MYSQL_ROOT_PASSWORD": "s3cr3t",
-			"MYSQL_DATABASE":      "orders",
+			"MYSQL_DATABASE":      "order",
 		},
 		WaitingFor: wait.ForSQL(nat.Port(port), "mysql", dbURL).Timeout(time.Second * 30),
 	}
@@ -41,7 +41,7 @@ func (o *OrderDatabaseTestSuite) SetupSuite() {
 		log.Fatal("Failed to start Mysql.", err)
 	}
 	endpoint, _ := mysqlContainer.Endpoint(ctx, "")
-	o.DataSourceUrl = fmt.Sprintf("root:s3cr3t@tcp(%s)/orders?charset=utf8mb4&parseTime=True&loc=Local", endpoint)
+	o.DataSourceUrl = fmt.Sprintf("root:s3cr3t@tcp(%s)/order?charset=utf8mb4&parseTime=True&loc=Local", endpoint)
 }
 
 func (o *OrderDatabaseTestSuite) Test_Should_Save_Order() {

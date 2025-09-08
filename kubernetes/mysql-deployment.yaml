@@ -1,54 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-init
+  namespace: mysql
+data:
+  init.sql: |
+    CREATE DATABASE IF NOT EXISTS `order`   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE DATABASE IF NOT EXISTS `payment` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE USER IF NOT EXISTS 'user'@'%' IDENTIFIED BY 'password';
+    GRANT ALL PRIVILEGES ON `order`.*   TO 'user'@'%';
+    GRANT ALL PRIVILEGES ON `payment`.* TO 'user'@'%';
+    FLUSH PRIVILEGES;
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mysql
   namespace: mysql
-  labels:
-    app: mysql
+  labels: { app: mysql }
 spec:
-  selector:
-    matchLabels:
-      app: mysql
-  strategy:
-    type: Recreate
+  selector: { matchLabels: { app: mysql } }
+  strategy: { type: Recreate }
   template:
-    metadata:
-      labels:
-        app: mysql
+    metadata: { labels: { app: mysql } }
     spec:
       containers:
-      - image: mysql:8.0
-        name: mysql
-        env:
-        - name: MYSQL_ROOT_PASSWORD
-          value: password
-        - name: MYSQL_DATABASE
-          value: orders
-        - name: MYSQL_USER
-          value: user
-        - name: MYSQL_PASSWORD
-          value: password
-        ports:
-        - containerPort: 3306
-          name: mysql
-        volumeMounts:
-        - name: mysql-persistent-storage
-          mountPath: /var/lib/mysql
+        - name: mysql
+          image: mysql:8.0
+          env:
+            - { name: MYSQL_ROOT_PASSWORD, value: password }
+          ports: [{ containerPort: 3306, name: mysql }]
+          volumeMounts:
+            - { name: mysql-data, mountPath: /var/lib/mysql }
+            - { name: mysql-init, mountPath: /docker-entrypoint-initdb.d }
       volumes:
-      - name: mysql-persistent-storage
-        persistentVolumeClaim:
-          claimName: mysql-pv-claim
+        - name: mysql-data
+          persistentVolumeClaim: { claimName: mysql-pv-claim }
+        - name: mysql-init
+          configMap: { name: mysql-init }
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: mysql-pv-claim
   namespace: mysql
-  labels:
-    app: mysql
+  labels: { app: mysql }
 spec:
-  accessModes:
-    - ReadWriteOnce
+  accessModes: [ ReadWriteOnce ]
   resources:
     requests:
       storage: 1Gi

@@ -1,48 +1,77 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: scripts/deploy-local.sh [namespace] [manifest_dir]
-NAMESPACE="${1:-default}"
-MANIFEST_DIR="${2:-kubernetes}"
+# Usage: .buildkite/deploy.sh [manifest_dir]
+# We DO NOT pass a namespace here; manifests already specify their own namespaces.
+MANIFEST_DIR="${1:-kubernetes}"
 
-# 1) Resolve TAG from CI artifact (.bk-tag) or fallbacks
+# --- Resolve TAG from artifact or fallbacks (robust) ---
 TAG=""
-if [[ -f .bk-tag ]]; then
+if [[ -f build.env ]]; then
+  # Preferred: state from earlier step
+  set -a; source build.env; set +a
+  TAG="${TAG:-}"
+fi
+if [[ -z "${TAG}" && -f .bk-tag ]]; then
   TAG="$(sed -n 's/^tag=//p' .bk-tag)"
 fi
 if [[ -z "${TAG}" && -n "${BUILDKITE_COMMIT:-}" ]]; then
-  TAG="${BUILDKITE_COMMIT:0:7}"
+  TAG="$(printf %s "$BUILDKITE_COMMIT" | cut -c1-7)"
 fi
 TAG="${TAG:-local-$(date +%s)}"
+TAG="$(printf %s "$TAG" | tr -c 'A-Za-z0-9_.-' '-')"
 
-# 2) Images (no registry prefix)
 ORDER_IMAGE="hackermonk/order:${TAG}"
 PAYMENT_IMAGE="hackermonk/payment:${TAG}"
+export ORDER_IMAGE PAYMENT_IMAGE
 
-echo ">>> Namespace: ${NAMESPACE}"
 echo ">>> Using images:"
 echo "    ${ORDER_IMAGE}"
 echo "    ${PAYMENT_IMAGE}"
 
-# 3) Load images into Minikube cache (no registry)
+# --- Ensure envsubst or provide a fallback ---
+apply_tmpl () {
+  local file="$1"
+  if command -v envsubst >/dev/null 2>&1; then
+    envsubst < "$file" | kubectl apply -f -
+  else
+    # Fallback: replace only the two vars we care about
+    perl -pe 's/\$\{ORDER_IMAGE\}/$ENV{ORDER_IMAGE}/g; s/\$\{PAYMENT_IMAGE\}/$ENV{PAYMENT_IMAGE}/g' "$file" \
+    | kubectl apply -f -
+  fi
+}
+
+# --- Load images into Minikube (no registry) ---
 minikube image load --overwrite=true "${ORDER_IMAGE}"
 minikube image load --overwrite=true "${PAYMENT_IMAGE}"
 
-# Optionally also load :dev for manual tinkering
-# minikube image load --overwrite=true hackermonk/order:dev
-# minikube image load --overwrite=true hackermonk/payment:dev
+# --- Apply manifests in a safe order ---
+# 1) Namespaces first (no -n; let YAML namespaces stand)
+if [[ -f "${MANIFEST_DIR}/namespaces.yaml" ]]; then
+  kubectl apply -f "${MANIFEST_DIR}/namespaces.yaml"
+fi
 
-# 4) Apply manifests with envsubst (templated image vars)
-export ORDER_IMAGE PAYMENT_IMAGE
-for m in mysql-deployment.yaml order-deployment.yaml payment-deployment.yaml services.yaml; do
-  f="${MANIFEST_DIR}/${m}"
-  [[ -f "$f" ]] || { echo "Missing manifest: $f"; exit 1; }
-  envsubst < "$f" | kubectl -n "$NAMESPACE" apply -f -
-done
+# 2) MySQL (creates mysql ns deploy + pvc)
+[[ -f "${MANIFEST_DIR}/mysql-deployment.yaml" ]] \
+  && apply_tmpl "${MANIFEST_DIR}/mysql-deployment.yaml"
 
-# 5) Rollouts
-kubectl -n "$NAMESPACE" rollout status deploy/order --timeout=90s || true
-kubectl -n "$NAMESPACE" rollout status deploy/payment --timeout=90s || true
+# 3) Services (contains mysql/order/payment services; each has its own namespace)
+[[ -f "${MANIFEST_DIR}/services.yaml" ]] \
+  && kubectl apply -f "${MANIFEST_DIR}/services.yaml"
 
-# 6) Quick view
-kubectl -n "$NAMESPACE" get pods -o wide
+# 4) App deployments (templated images)
+[[ -f "${MANIFEST_DIR}/order-deployment.yaml" ]] \
+  && apply_tmpl "${MANIFEST_DIR}/order-deployment.yaml"
+[[ -f "${MANIFEST_DIR}/payment-deployment.yaml" ]] \
+  && apply_tmpl "${MANIFEST_DIR}/payment-deployment.yaml"
+
+# --- Rollouts per namespace (don’t force a single -n) ---
+kubectl -n mysql   rollout status deploy/mysql   --timeout=120s || true
+kubectl -n order   rollout status deploy/order   --timeout=120s || true
+kubectl -n payment rollout status deploy/payment --timeout=120s || true
+
+# --- Quick status ---
+echo ">>> Pods:"
+kubectl -n mysql   get pods -o wide || true
+kubectl -n order   get pods -o wide || true
+kubectl -n payment get pods -o wide || true

@@ -3,67 +3,36 @@ kind: Service
 metadata:
   name: mysql
   namespace: mysql
-  labels:
-    app: mysql
+  labels: { app: mysql }
 spec:
   ports:
-    - port: 3306
-  selector:
-    app: mysql
-  clusterIP: None
+    - name: mysql
+      port: 3306
+      targetPort: 3306
+  selector: { app: mysql }
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: order
   namespace: order
-  labels:
-    app: order
+  labels: { app: order }
 spec:
   type: ClusterIP
   ports:
-  - port: 80
-    targetPort: 8080
-  selector:
-    app: order
+    - port: 8080
+      targetPort: 8080
+  selector: { app: order }
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: payment
   namespace: payment
-  labels:
-    app: payment
+  labels: { app: payment }
 spec:
   type: ClusterIP
   ports:
-  - port: 80
-    targetPort: 8081
-  selector:
-    app: payment
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: microservices-ingress
-  namespace: order
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  rules:
-  - http:
-      paths:
-      - path: /order
-        pathType: Prefix
-        backend:
-          service:
-            name: order
-            port:
-              number: 80
-      - path: /payment
-        pathType: Prefix
-        backend:
-          service:
-            name: payment
-            port:
-              number: 80
+    - port: 8081
+      targetPort: 8081
+  selector: { app: payment }

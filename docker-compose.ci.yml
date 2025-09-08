@@ -3,7 +3,7 @@ services:
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: orders
+      MYSQL_DATABASE: order
       MYSQL_USER: user
       MYSQL_PASSWORD: password
     ports:
@@ -27,7 +27,7 @@ services:
       DB_PORT: 3306
       DB_USER: user
       DB_PASSWORD: password
-      DB_NAME: orders
+      DB_NAME: order
     working_dir: /app
     command: ["sh", "-c", "go test -v ./..."]
     depends_on:
@@ -48,7 +48,7 @@ services:
       DB_PORT: 3306
       DB_USER: user
       DB_PASSWORD: password
-      DB_NAME: payments
+      DB_NAME: payment
     working_dir: /app
     command: ["sh", "-c", "go test -v ./..."]
     depends_on:
