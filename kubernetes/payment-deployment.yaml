@@ -16,30 +16,31 @@ spec:
         app: payment
     spec:
       containers:
-      - name: payment
-        image: hackermonk/payment:${BUILDKITE_COMMIT:0:7}
-        ports:
-        - containerPort: 8081
-        env:
-        - name: DB_HOST
-          value: mysql.mysql.svc.cluster.local
-        - name: DB_PORT
-          value: "3306"
-        - name: DB_USER
-          value: user
-        - name: DB_PASSWORD
-          value: password
-        - name: DB_NAME
-          value: payments
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8081
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8081
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: payment
+          image: ${PAYMENT_IMAGE}          # injected by envsubst
+          imagePullPolicy: IfNotPresent    # use locally-loaded image
+          ports:
+            - containerPort: 8081
+          env:
+            - name: DB_HOST
+              value: mysql.mysql.svc.cluster.local
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_USER
+              value: user
+            - name: DB_PASSWORD
+              value: password
+            - name: DB_NAME
+              value: payments
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 5

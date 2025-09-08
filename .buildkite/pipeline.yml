@@ -1,13 +1,17 @@
 steps:
-  - label: ":wrench: Setup"
+  - key: "setup"
+    label: ":wrench: Setup"
     command: ".buildkite/steps/01_setup.sh"
 
   - label: ":package: Build images"
-    command: ".buildkite/steps/02_build_images.sh"
+    depends_on: "setup"
+    command: ".buildkite/steps/02_build.sh"
 
-  # # Uncomment after Phase A is green
-  # - label: ":shield: Security scans (SAST/SCA/Secrets)"
-  #   command: ".buildkite/steps/03_security_scans.sh"
+  - label: ":kubernetes: Deploy to Minikube"
+    depends_on: "setup"
+    command: ".buildkite/steps/03_deploy.sh"
 
-  # - label: ":kubernetes: Deploy to minikube"
-  #   command: ".buildkite/steps/04_deploy_local.sh"
+  # Later (optional):
+  # - label: ":shield: Security scans"
+  #   depends_on: "setup"
+  #   command: ".buildkite/steps/04_security.sh"

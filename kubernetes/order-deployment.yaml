@@ -16,30 +16,31 @@ spec:
         app: order
     spec:
       containers:
-      - name: order
-        image: hackermonk/order:${BUILDKITE_COMMIT:0:7}
-        ports:
-        - containerPort: 8080
-        env:
-        - name: DB_HOST
-          value: mysql.mysql.svc.cluster.local
-        - name: DB_PORT
-          value: "3306"
-        - name: DB_USER
-          value: user
-        - name: DB_PASSWORD
-          value: password
-        - name: DB_NAME
-          value: orders
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: order
+          image: ${ORDER_IMAGE}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_HOST
+              value: mysql.mysql.svc.cluster.local
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_USER
+              value: user
+            - name: DB_PASSWORD
+              value: password
+            - name: DB_NAME
+              value: orders
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5

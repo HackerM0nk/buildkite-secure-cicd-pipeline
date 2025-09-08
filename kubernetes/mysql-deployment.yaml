@@ -17,27 +17,32 @@ spec:
         app: mysql
     spec:
       containers:
-      - image: mysql:8.0
-        name: mysql
-        env:
-        - name: MYSQL_ROOT_PASSWORD
-          value: password
-        - name: MYSQL_DATABASE
-          value: orders
-        - name: MYSQL_USER
-          value: user
-        - name: MYSQL_PASSWORD
-          value: password
-        ports:
-        - containerPort: 3306
+        - image: mysql:8.0
           name: mysql
-        volumeMounts:
-        - name: mysql-persistent-storage
-          mountPath: /var/lib/mysql
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: password
+            - name: MYSQL_DATABASE
+              value: orders
+            - name: MYSQL_USER
+              value: user
+            - name: MYSQL_PASSWORD
+              value: password
+          ports:
+            - containerPort: 3306
+              name: mysql
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "mysqladmin ping -h 127.0.0.1 -uroot -ppassword --silent"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          volumeMounts:
+            - name: mysql-persistent-storage
+              mountPath: /var/lib/mysql
       volumes:
-      - name: mysql-persistent-storage
-        persistentVolumeClaim:
-          claimName: mysql-pv-claim
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: mysql-pv-claim
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
