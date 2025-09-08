@@ -5,9 +5,9 @@ metadata:
   namespace: mysql
 data:
   init.sql: |
-    CREATE DATABASE IF NOT EXISTS orders   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-    CREATE DATABASE IF NOT EXISTS payments CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE DATABASE IF NOT EXISTS orders  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE DATABASE IF NOT EXISTS payment CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     CREATE USER IF NOT EXISTS 'user'@'%' IDENTIFIED BY 'password';
-    GRANT ALL ON orders.*   TO 'user'@'%';
-    GRANT ALL ON payments.* TO 'user'@'%';
+    GRANT ALL ON orders.*  TO 'user'@'%';
+    GRANT ALL ON payment.* TO 'user'@'%';
     FLUSH PRIVILEGES;

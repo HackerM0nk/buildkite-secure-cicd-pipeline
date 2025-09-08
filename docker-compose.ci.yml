@@ -48,7 +48,7 @@ services:
       DB_PORT: 3306
       DB_USER: user
       DB_PASSWORD: password
-      DB_NAME: payments
+      DB_NAME: payment
     working_dir: /app
     command: ["sh", "-c", "go test -v ./..."]
     depends_on:

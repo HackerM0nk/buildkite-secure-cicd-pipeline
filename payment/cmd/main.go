@@ -24,15 +24,28 @@ const (
 )
 
 func tracerProvider(url string) (*tracesdk.TracerProvider, error) {
+	if url == "" {
+		// If no URL is provided, return a no-op tracer provider
+		return tracesdk.NewTracerProvider(
+			tracesdk.WithSampler(tracesdk.NeverSample()),
+			tracesdk.WithResource(resource.NewWithAttributes(
+				semconv.SchemaURL,
+				semconv.ServiceNameKey.String(service),
+				attribute.String("environment", environment),
+				attribute.Int64("ID", id),
+			)),
+		), nil
+	}
+
 	// Create the Jaeger exporter
 	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
 	if err != nil {
-		return nil, err
+		log.Warnf("Failed to create Jaeger exporter: %v. Tracing will be disabled.", err)
+		return tracerProvider("") // Fall back to no-op provider
 	}
+
 	tp := tracesdk.NewTracerProvider(
-		// Always be sure to batch in production.
 		tracesdk.WithBatcher(exp),
-		// Record information about this application in a Resource.
 		tracesdk.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String(service),
@@ -67,13 +80,19 @@ func (l customLogger) Format(entry *log.Entry) ([]byte, error) {
 }
 
 func main() {
-	tp, err := tracerProvider("http://jaeger-otel.jaeger.svc.cluster.local:14278/api/traces")
-	if err != nil {
-		log.Fatal(err)
+	// Make Jaeger URL configurable via environment variable, default to empty (disabled)
+	jaegerURL := os.Getenv("JAEGER_URL")
+	if jaegerURL == "" {
+		log.Info("JAEGER_URL not set, tracing is disabled")
 	}
 
-	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}))
+	tp, err := tracerProvider(jaegerURL)
+	if err != nil {
+		log.Warnf("Failed to initialize tracer: %v. Continuing without tracing.", err)
+	} else {
+		otel.SetTracerProvider(tp)
+		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}))
+	}
 
 	dbAdapter, err := db.NewAdapter(config.GetDataSourceURL())
 	if err != nil {
