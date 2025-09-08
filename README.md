@@ -1,7 +1,5 @@
 # A Practical Security-First Go Microservices Stack on Buildkite + Minikube
 
-**Author:** Your Name  
-**Repo:** `HackerM0nk/buildkite-secure-cicd-pipeline` (branch: `test`)  
 **Stack:** Go (Order/Payment, gRPC) · MySQL · Docker · Kubernetes/Minikube · Buildkite  
 **Security:** Gitleaks · Semgrep · OSV (Go SCA) · Trivy (image) · SBOM (Syft/Trivy) · Cosign (sign-blob)
 
