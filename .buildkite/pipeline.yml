@@ -54,28 +54,35 @@ steps:
   - label: ":package: Build k8s images for Minikube"
     command: |
       set -euo pipefail
-      TAG="${BUILDKITE_COMMIT:0:7}"
-      # Hardcoded for M3 Mac
-      PLATFORM="linux/arm64"
-      GOARCH="arm64"
-      echo "--- Using PLATFORM=$PLATFORM GOARCH=$GOARCH TAG=$TAG"
-      docker buildx create --use --name bkx || docker buildx use bkx
-      # Order
-      docker buildx build \
-        --platform "$PLATFORM" \
+      export TAG="${BUILDKITE_COMMIT:0:7}"
+      export GOARCH="arm64"
+      
+      echo "--- System Info"
+      uname -a
+      docker version
+      
+      echo "--- Building with GOARCH=$GOARCH TAG=$TAG"
+      
+      # Build Order Service
+      echo "--- Building Order Service"
+      docker build \
         --build-arg GOARCH="$GOARCH" \
         -t hackermonk/order:${TAG} \
         -t hackermonk/order:dev \
-        -f order/Dockerfile order \
-        --load
-      # Payment
-      docker buildx build \
-        --platform "$PLATFORM" \
+        -f order/Dockerfile \
+        .
+        
+      # Build Payment Service
+      echo "--- Building Payment Service"
+      docker build \
         --build-arg GOARCH="$GOARCH" \
         -t hackermonk/payment:${TAG} \
         -t hackermonk/payment:dev \
-        -f payment/Dockerfile payment \
-        --load
+        -f payment/Dockerfile \
+        .
+        
+      echo "--- Built Images"
+      docker images | grep -E 'hackermonk/(order|payment)'
       echo "--- Local images:"
       docker images | grep -E 'hackermonk/(order|payment)'
 
@@ -87,6 +94,39 @@ steps:
       minikube image load --overwrite=true hackermonk/payment:${TAG}
       minikube image load --overwrite=true hackermonk/order:dev
       minikube image load --overwrite=true hackermonk/payment:dev
+
+  - label: ":kubernetes: Create Namespaces"
+    command: |
+      set -euo pipefail
+      echo "--- Creating namespaces"
+      kubectl apply -f kubernetes/namespaces.yaml
+
+  - label: ":kubernetes: Deploy MySQL"
+    command: |
+      set -euo pipefail
+      echo "--- Deploying MySQL"
+      kubectl apply -f kubernetes/mysql-deployment.yaml
+      kubectl apply -f <(sed 's/namespace: mysql//g' kubernetes/services.yaml | grep -A 10 'name: mysql')
+
+  - label: ":kubernetes: Deploy Order Service"
+    command: |
+      set -euo pipefail
+      echo "--- Deploying Order Service"
+      kubectl apply -f kubernetes/order-deployment.yaml
+      kubectl apply -f <(sed -n '/name: order/,/---/p' kubernetes/services.yaml | grep -v '^---$' | sed 's/namespace: order//g')
+
+  - label: ":kubernetes: Deploy Payment Service"
+    command: |
+      set -euo pipefail
+      echo "--- Deploying Payment Service"
+      kubectl apply -f kubernetes/payment-deployment.yaml
+      kubectl apply -f <(sed -n '/name: payment/,/---/p' kubernetes/services.yaml | grep -v '^---$' | sed 's/namespace: payment//g')
+
+  - label: ":kubernetes: Deploy Ingress"
+    command: |
+      set -euo pipefail
+      echo "--- Deploying Ingress"
+      kubectl apply -f <(grep -A 100 'name: microservices-ingress' kubernetes/services.yaml)
 
   - label: ":kubernetes: Deploy (no registry)"
     command: |
