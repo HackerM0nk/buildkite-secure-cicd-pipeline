@@ -49,25 +49,25 @@ steps:
       - "artifacts/trivy-fs.sarif"
     soft_fail: true  
 
-  # # -------- Build --------
-  # - key: build
-  #   label: ":package: Build images"
-  #   depends_on:
-  #     - setup
-  #     - gitleaks
-  #     - semgrep
-  #     - sca
-  #   command: ".buildkite/steps/02_build.sh"
+  # -------- Build --------
+  - key: build
+    label: ":package: Build images"
+    depends_on:
+      - setup
+      - gitleaks
+      - semgrep
+      - sca
+    command: ".buildkite/steps/02_build.sh"
 
-  # # -------- Post-build security --------
-  # - key: trivy_img
-  #   label: ":microscope: Trivy image scan"
-  #   depends_on: build
-  #   command: ".buildkite/steps/07_image_scanning.sh"
-  #   soft_fail: true           # start soft; flip to hard-fail later
-  #   artifact_paths:
-  #     - "artifacts/trivy-order.sarif"
-  #     - "artifacts/trivy-payment.sarif"
+  # -------- Post-build security --------
+  - key: trivy_img
+    label: ":microscope: Trivy image scan"
+    depends_on: build
+    command: ".buildkite/steps/07_image_scanning.sh"
+    soft_fail: true           # start soft; flip to hard-fail later
+    artifact_paths:
+      - "artifacts/trivy-order.sarif"
+      - "artifacts/trivy-payment.sarif"
 
   # - key: sbom
   #   label: ":page_facing_up: SBOM + sign"
