@@ -15,26 +15,24 @@ steps:
       kubectl config current-context || true
 
       echo "--- Decide architecture"
-      # Hardcode for M3 (arm64); change to detection if you prefer:
+      # Hardcode for M3 (arm64); switch to detection later if you want
       echo "arch=arm64" > .bk-arch
       cat .bk-arch
 
       echo "--- Decide tag"
       TAG=""
       if [ -n "${BUILDKITE_COMMIT:-}" ]; then
-        TAG="${BUILDKITE_COMMIT:0:7}"
+        # avoid ${VAR:0:7}; use cut instead
+        TAG="$(printf %s "$BUILDKITE_COMMIT" | cut -c1-7)"
       elif git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         TAG="$(git rev-parse --short HEAD)"
       else
         TAG="local-$(date +%s)"
       fi
-
-      # sanitize + validate tag
-      TAG="${TAG//[^A-Za-z0-9_.-]/-}"
-      if [ -z "$TAG" ]; then
-        echo "FATAL: computed TAG is empty"; exit 1
-      fi
-      echo "tag=${TAG}" > .bk-tag
+      # sanitize without ${var//…/…}
+      TAG="$(printf %s "$TAG" | tr -c 'A-Za-z0-9_.-' '-')"
+      [ -n "$TAG" ] || { echo "FATAL: computed TAG is empty"; exit 1; }
+      echo "tag=$TAG" > .bk-tag
       echo "Using TAG=$TAG"
 
   - label: ":docker: Build (compose tests' images)"
@@ -82,8 +80,9 @@ steps:
       TAG="$(sed -n 's/^tag=//p' .bk-tag)"
       [ -n "$ARCH" ] || { echo "FATAL: .bk-arch missing"; exit 1; }
       [ -n "$TAG" ]  || { echo "FATAL: .bk-tag missing"; exit 1; }
+
       case "$ARCH" in
-        arm64)   PLATFORM="linux/arm64"; GOARCH="arm64" ;;
+        arm64)      PLATFORM="linux/arm64"; GOARCH="arm64" ;;
         amd64|x86_64) PLATFORM="linux/amd64"; GOARCH="amd64" ;;
         *) echo "Unknown arch '$ARCH'"; exit 1 ;;
       esac
@@ -95,7 +94,7 @@ steps:
       docker buildx build \
         --platform "$PLATFORM" \
         --build-arg GOARCH="$GOARCH" \
-        -t "hackermonk/order:${TAG:?missing_TAG}" \
+        -t "hackermonk/order:$TAG" \
         -t "hackermonk/order:dev" \
         -f order/Dockerfile order \
         --load
@@ -104,7 +103,7 @@ steps:
       docker buildx build \
         --platform "$PLATFORM" \
         --build-arg GOARCH="$GOARCH" \
-        -t "hackermonk/payment:${TAG:?missing_TAG}" \
+        -t "hackermonk/payment:$TAG" \
         -t "hackermonk/payment:dev" \
         -f payment/Dockerfile payment \
         --load
@@ -117,8 +116,8 @@ steps:
       set -euo pipefail
       TAG="$(sed -n 's/^tag=//p' .bk-tag)"
       echo "--- Loading images with tag: $TAG"
-      minikube image load --overwrite=true "hackermonk/order:${TAG}"
-      minikube image load --overwrite=true "hackermonk/payment:${TAG}"
+      minikube image load --overwrite=true "hackermonk/order:$TAG"
+      minikube image load --overwrite=true "hackermonk/payment:$TAG"
       # Optional dev tags:
       minikube image load --overwrite=true hackermonk/order:dev
       minikube image load --overwrite=true hackermonk/payment:dev
@@ -126,9 +125,9 @@ steps:
   - label: ":kubernetes: Deploy (no registry)"
     command: |
       set -euo pipefail
-      TAG=$(sed -n 's/^tag=//p' .bk-tag)
-      export ORDER_IMAGE="hackermonk/order:${TAG}"
-      export PAYMENT_IMAGE="hackermonk/payment:${TAG}"
+      TAG="$(sed -n 's/^tag=//p' .bk-tag)"
+      export ORDER_IMAGE="hackermonk/order:$TAG"
+      export PAYMENT_IMAGE="hackermonk/payment:$TAG"
       echo "--- Using images:"
       echo "  $ORDER_IMAGE"
       echo "  $PAYMENT_IMAGE"
